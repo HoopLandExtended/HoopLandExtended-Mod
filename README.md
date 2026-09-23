@@ -7,6 +7,9 @@
 > **Platform:** Windows x64 / Steam  
 > **Career support:** New careers only
 
+> [!WARNING]
+> **Known issue in v0.2.0-alpha.2:** externally editing a native Hoop Land save can cause HLE to enter recovery mode and disable its gameplay modules. Avoid save editing with this build while a hotfix is being prepared. Existing HLE sidecar progression is not intentionally deleted by this condition.
+
 ## What HLE currently adds
 
 - Expanded skills and skill progression
@@ -14,7 +17,6 @@
 - Improved skill descriptions and layout behavior
 - Expanded social-media personalities and navigation-performance fixes
 - College and professional fan-progression fixes
-- Simulation-performance improvements
 - Automatic HLE enrollment for new careers
 - Persistent HLE career state
 - Separate setup, modded launch, loader-bypassed launch, report collection, and removal helpers
