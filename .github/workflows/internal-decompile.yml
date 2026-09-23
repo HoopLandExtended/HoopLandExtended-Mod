@@ -1,0 +1,35 @@
+name: Internal CareerHost decompile
+
+on:
+  push:
+    paths:
+      - '.github/workflows/internal-decompile.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install ILSpy command line
+        run: dotnet tool install ilspycmd --tool-path .tools
+      - name: Download alpha.2
+        run: |
+          curl -L --fail -o hle.zip "https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/download/v0.2.0-alpha.2/HoopLandExtended-0.2.0-alpha.2-win-x64.zip"
+          unzip -q hle.zip -d pkg
+      - name: Decompile CareerHost
+        run: |
+          mkdir -p decompiled
+          ./.tools/ilspycmd -p -o decompiled pkg/HoopLandExtended-0.2.0-alpha.2/payload/HoopLandExpanded.CareerHost.dll
+      - name: Upload decompiled source
+        uses: actions/upload-artifact@v7
+        with:
+          name: careerhost-decompiled
+          path: decompiled
+          retention-days: 1
