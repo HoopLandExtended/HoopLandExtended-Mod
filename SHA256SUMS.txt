@@ -1,1 +1,2 @@
+569be1375d31bee2f5058772435c6cb34eff24efad1640f1c253787ad62da43f  HoopLandExtended-0.2.0-alpha.3-win-x64.zip
 4dabc9efd3885c03c41cffe9a51a36d4a1a756893e0e5226ecadcf4a0081149a  HoopLandExtended-0.2.0-alpha.2-win-x64.zip
