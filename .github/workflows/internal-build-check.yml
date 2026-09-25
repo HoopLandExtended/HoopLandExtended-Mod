@@ -45,6 +45,9 @@ jobs:
           s=s.replace('<Reference Include="BepInEx.Unity.IL2CPP" />','<Reference Include="BepInEx.Unity.IL2CPP"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>')
           s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.2/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.2/payload/')
           p.write_text(s)
+          cs=Path("src/Main/HoopLandExpanded/CustomSkills.cs")
+          t=cs.read_text().replace("private readonly Random passRandom = new Random();","private readonly System.Random passRandom = new System.Random();")
+          cs.write_text(t)
       - name: Build decompiled runtime
         run: dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
       - name: Upload build
