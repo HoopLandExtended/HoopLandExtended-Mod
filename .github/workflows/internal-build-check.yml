@@ -1,0 +1,55 @@
+name: Internal decompiled build check
+
+on:
+  push:
+    paths:
+      - '.github/workflows/internal-build-check.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools
+      - name: Download and decompile current runtime
+        run: |
+          curl -L --fail -o hle.zip "https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/download/v0.2.0-alpha.2/HoopLandExtended-0.2.0-alpha.2-win-x64.zip"
+          unzip -q hle.zip -d pkg
+          mkdir -p src/Main
+          ./.tools/ilspycmd -p -o src/Main pkg/HoopLandExtended-0.2.0-alpha.2/payload/HoopLandExpanded.dll
+      - name: Download compile references
+        run: |
+          curl -L --fail -o bep.zip "https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip"
+          curl -L --fail -o unity.zip "https://unity.bepinex.dev/libraries/2022.3.62.zip"
+          mkdir -p refs/bep refs/unity
+          unzip -q bep.zip -d refs/bep
+          unzip -q unity.zip -d refs/unity
+      - name: Patch decompiler project references
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path("src/Main/HoopLandExpanded.csproj")
+          s=p.read_text()
+          s=s.replace("<LangVersion>14.0</LangVersion>","<LangVersion>12.0</LangVersion>")
+          s=s.replace('<Reference Include="0Harmony" />','<Reference Include="0Harmony"><HintPath>../../refs/bep/BepInEx/core/0Harmony.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="UnityEngine.CoreModule" />','<Reference Include="UnityEngine.CoreModule"><HintPath>../../refs/unity/UnityEngine.CoreModule.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="Il2CppInterop.Runtime" />','<Reference Include="Il2CppInterop.Runtime"><HintPath>../../refs/bep/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Core" />','<Reference Include="BepInEx.Core"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Core.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Unity.IL2CPP" />','<Reference Include="BepInEx.Unity.IL2CPP"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.2/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.2/payload/')
+          p.write_text(s)
+      - name: Build decompiled runtime
+        run: dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
+      - name: Upload build
+        uses: actions/upload-artifact@v7
+        with:
+          name: decompiled-build-check
+          path: src/Main/bin/Release/net6.0/HoopLandExpanded.dll
+          retention-days: 1
