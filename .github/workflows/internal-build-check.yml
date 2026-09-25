@@ -48,6 +48,15 @@ jobs:
           cs=Path("src/Main/HoopLandExpanded/CustomSkills.cs")
           t=cs.read_text().replace("private readonly Random passRandom = new Random();","private readonly System.Random passRandom = new System.Random();")
           cs.write_text(t)
+          sl=Path("src/Main/HoopLandExpanded/SkillLogScope.cs")
+          t=sl.read_text().replace("Interlocked.Read(in included)","Interlocked.Read(ref included)").replace("Interlocked.Read(in excluded)","Interlocked.Read(ref excluded)").replace("Interlocked.Read(in unresolved)","Interlocked.Read(ref unresolved)").replace("Interlocked.Read(in suppressed)","Interlocked.Read(ref suppressed)")
+          sl.write_text(t)
+          si=Path("src/Main/HoopLandExpanded/SkillIconImages.cs")
+          t=si.read_text()
+          old_sig='byte* ptr = stackalloc byte[8];\n\t\t// IL cpblk instruction\n\t\tUnsafe.CopyBlock(ptr, ref _003CPrivateImplementationDetails_003E._4C4B6A3BE1314AB86138BEF4314DDE022E600960D8689A2C8F8631802D20DAB6, 8);\n\t\tReadOnlySpan<byte> other = new Span<byte>(ptr, 8);'
+          new_sig='ReadOnlySpan<byte> other = new byte[8] { 137, 80, 78, 71, 13, 10, 26, 10 };'
+          if old_sig not in t: raise SystemExit("PNG signature decompile pattern not found")
+          si.write_text(t.replace(old_sig,new_sig))
       - name: Build decompiled runtime
         run: dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
       - name: Upload build
