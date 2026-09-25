@@ -1,140 +1,72 @@
-name: Internal alpha3 source recovery build
+name: Internal alpha3 main recovery build
 
 on:
   push:
     paths:
       - '.github/workflows/internal-alpha3-recovery-build.yml'
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  recover-build:
-    runs-on: windows-latest
+  build:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: '10.0.x'
-
-      - name: Install ILSpy command line
-        shell: pwsh
+          dotnet-version: '8.0.x'
+      - name: Install ILSpy
         run: dotnet tool install ilspycmd --tool-path .tools
-
-      - name: Download alpha.3 and references
-        shell: pwsh
+      - name: Download alpha.3 and decompile main runtime
         run: |
-          $ErrorActionPreference='Stop'
-          Invoke-WebRequest -Uri "https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/download/v0.2.0-alpha.3/HoopLandExtended-0.2.0-alpha.3-win-x64.zip" -OutFile alpha3.zip
-          Expand-Archive alpha3.zip -DestinationPath pkg
-
-          Invoke-WebRequest -Uri "https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip" -OutFile bepinex.zip
-          Expand-Archive bepinex.zip -DestinationPath bepinex
-
-          Invoke-WebRequest -Uri "https://unity.bepinex.dev/libraries/2022.3.62.zip" -OutFile unity.zip
-          Expand-Archive unity.zip -DestinationPath unity
-
-      - name: Decompile alpha.3
-        shell: pwsh
+          curl -L --fail -o hle.zip "https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/download/v0.2.0-alpha.3/HoopLandExtended-0.2.0-alpha.3-win-x64.zip"
+          unzip -q hle.zip -d pkg
+          mkdir -p src/Main
+          ./.tools/ilspycmd -p -o src/Main pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.dll
+      - name: Download compile references
         run: |
-          $ErrorActionPreference='Stop'
-          New-Item -ItemType Directory -Force -Path src\CareerHost,src\Main | Out-Null
-          .\.tools\ilspycmd.exe -p -o src\CareerHost pkg\HoopLandExtended-0.2.0-alpha.3\payload\HoopLandExpanded.CareerHost.dll
-          .\.tools\ilspycmd.exe -p -o src\Main pkg\HoopLandExtended-0.2.0-alpha.3\payload\HoopLandExpanded.dll
-
-      - name: Patch recovered project references
-        shell: pwsh
+          curl -L --fail -o bep.zip "https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip"
+          curl -L --fail -o unity.zip "https://unity.bepinex.dev/libraries/2022.3.62.zip"
+          mkdir -p refs/bep refs/unity
+          unzip -q bep.zip -d refs/bep
+          unzip -q unity.zip -d refs/unity
+      - name: Patch decompiler output
+        shell: python
         run: |
-          $ErrorActionPreference='Stop'
-          @'
           from pathlib import Path
-          import xml.etree.ElementTree as ET
+          p=Path("src/Main/HoopLandExpanded.csproj")
+          s=p.read_text()
+          s=s.replace("<LangVersion>14.0</LangVersion>","<LangVersion>12.0</LangVersion>")
+          s=s.replace('<Reference Include="0Harmony" />','<Reference Include="0Harmony"><HintPath>../../refs/bep/BepInEx/core/0Harmony.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="UnityEngine.CoreModule" />','<Reference Include="UnityEngine.CoreModule"><HintPath>../../refs/unity/UnityEngine.CoreModule.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="Il2CppInterop.Runtime" />','<Reference Include="Il2CppInterop.Runtime"><HintPath>../../refs/bep/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Core" />','<Reference Include="BepInEx.Core"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Core.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Unity.IL2CPP" />','<Reference Include="BepInEx.Unity.IL2CPP"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.2/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.3/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          p.write_text(s)
 
-          root=Path.cwd()
-          payload=root/'pkg'/'HoopLandExtended-0.2.0-alpha.3'/'payload'
-          refs=root/'refs'
-          refs.mkdir(exist_ok=True)
+          cs=Path("src/Main/HoopLandExpanded/CustomSkills.cs")
+          t=cs.read_text().replace("private readonly Random passRandom = new Random();","private readonly System.Random passRandom = new System.Random();")
+          cs.write_text(t)
 
-          wanted={
-            '0Harmony.dll': list((root/'bepinex').rglob('0Harmony.dll'))[0],
-            'BepInEx.Core.dll': list((root/'bepinex').rglob('BepInEx.Core.dll'))[0],
-            'BepInEx.Unity.IL2CPP.dll': list((root/'bepinex').rglob('BepInEx.Unity.IL2CPP.dll'))[0],
-            'Il2CppInterop.Runtime.dll': list((root/'bepinex').rglob('Il2CppInterop.Runtime.dll'))[0],
-            'UnityEngine.CoreModule.dll': list((root/'unity').rglob('UnityEngine.CoreModule.dll'))[0],
-            'HoopLandExpanded.Finance.dll': payload/'HoopLandExpanded.Finance.dll',
-            'HoopLandExpanded.Finance.NativeImport.dll': payload/'HoopLandExpanded.Finance.NativeImport.dll',
-          }
-          for name,src in wanted.items():
-            (refs/name).write_bytes(Path(src).read_bytes())
+          sl=Path("src/Main/HoopLandExpanded/SkillLogScope.cs")
+          t=sl.read_text().replace("Interlocked.Read(in included)","Interlocked.Read(ref included)").replace("Interlocked.Read(in excluded)","Interlocked.Read(ref excluded)").replace("Interlocked.Read(in unresolved)","Interlocked.Read(ref unresolved)").replace("Interlocked.Read(in suppressed)","Interlocked.Read(ref suppressed)")
+          sl.write_text(t)
 
-          def patch(path, main=False):
-            tree=ET.parse(path)
-            p=tree.getroot()
-            # Remove all existing Reference groups and rebuild them explicitly.
-            for ig in list(p.findall('ItemGroup')):
-              for r in list(ig.findall('Reference')):
-                ig.remove(r)
-            ig=ET.SubElement(p,'ItemGroup')
-            names=['HoopLandExpanded.Finance','HoopLandExpanded.Finance.NativeImport']
-            if main:
-              names=['0Harmony','HoopLandExpanded.CareerHost','UnityEngine.CoreModule',
-                     'HoopLandExpanded.Finance','HoopLandExpanded.Finance.NativeImport',
-                     'Il2CppInterop.Runtime','BepInEx.Core','BepInEx.Unity.IL2CPP']
-            mapping={
-              '0Harmony':'0Harmony.dll',
-              'HoopLandExpanded.CareerHost':'HoopLandExpanded.CareerHost.dll',
-              'UnityEngine.CoreModule':'UnityEngine.CoreModule.dll',
-              'HoopLandExpanded.Finance':'HoopLandExpanded.Finance.dll',
-              'HoopLandExpanded.Finance.NativeImport':'HoopLandExpanded.Finance.NativeImport.dll',
-              'Il2CppInterop.Runtime':'Il2CppInterop.Runtime.dll',
-              'BepInEx.Core':'BepInEx.Core.dll',
-              'BepInEx.Unity.IL2CPP':'BepInEx.Unity.IL2CPP.dll',
-            }
-            for n in names:
-              r=ET.SubElement(ig,'Reference',{'Include':n})
-              hp=ET.SubElement(r,'HintPath')
-              if n=='HoopLandExpanded.CareerHost':
-                hp.text=str((root/'built'/'HoopLandExpanded.CareerHost.dll').resolve())
-              else:
-                hp.text=str((refs/mapping[n]).resolve())
-              ET.SubElement(r,'Private').text='False'
-            tree.write(path, encoding='utf-8', xml_declaration=False)
-
-          patch(root/'src'/'CareerHost'/'HoopLandExpanded.CareerHost.csproj', main=False)
-          patch(root/'src'/'Main'/'HoopLandExpanded.csproj', main=True)
-          '@ | python -
-
-      - name: Build recovered CareerHost
-        shell: pwsh
-        run: |
-          $ErrorActionPreference='Stop'
-          New-Item -ItemType Directory -Force -Path built | Out-Null
-          dotnet build src\CareerHost\HoopLandExpanded.CareerHost.csproj -c Release
-          Copy-Item src\CareerHost\bin\Release\net6.0\HoopLandExpanded.CareerHost.dll built\
-
-      - name: Build recovered main runtime
-        shell: pwsh
-        run: |
-          $ErrorActionPreference='Stop'
-          dotnet build src\Main\HoopLandExpanded.csproj -c Release
-          Copy-Item src\Main\bin\Release\net6.0\HoopLandExpanded.dll built\
-
-      - name: Create recovery report
-        shell: pwsh
-        run: |
-          $ErrorActionPreference='Stop'
-          Get-FileHash pkg\HoopLandExtended-0.2.0-alpha.3\payload\HoopLandExpanded.CareerHost.dll -Algorithm SHA256 | Format-List | Out-File built\hashes.txt
-          Get-FileHash built\HoopLandExpanded.CareerHost.dll -Algorithm SHA256 | Format-List | Out-File built\hashes.txt -Append
-          Get-FileHash pkg\HoopLandExtended-0.2.0-alpha.3\payload\HoopLandExpanded.dll -Algorithm SHA256 | Format-List | Out-File built\hashes.txt -Append
-          Get-FileHash built\HoopLandExpanded.dll -Algorithm SHA256 | Format-List | Out-File built\hashes.txt -Append
-
-      - name: Upload recovered build
+          si=Path("src/Main/HoopLandExpanded/SkillIconImages.cs")
+          t=si.read_text()
+          old='byte* ptr = stackalloc byte[8];\n\t\t// IL cpblk instruction\n\t\tUnsafe.CopyBlock(ptr, ref _003CPrivateImplementationDetails_003E._4C4B6A3BE1314AB86138BEF4314DDE022E600960D8689A2C8F8631802D20DAB6, 8);\n\t\tReadOnlySpan<byte> other = new Span<byte>(ptr, 8);'
+          new='ReadOnlySpan<byte> other = new byte[8] { 137, 80, 78, 71, 13, 10, 26, 10 };'
+          if old not in t: raise SystemExit("PNG signature decompile pattern not found")
+          si.write_text(t.replace(old,new))
+      - name: Build recovered alpha.3 main runtime
+        run: dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
+      - name: Upload recovered source and build
         uses: actions/upload-artifact@v7
         with:
-          name: alpha3-recovered-build
+          name: alpha3-main-recovered
           path: |
-            built
-            src
+            src/Main
           retention-days: 1
