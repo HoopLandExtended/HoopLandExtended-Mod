@@ -67,7 +67,7 @@ jobs:
           Path("icon1.patch").write_bytes(zlib.decompress(base64.b64decode(Path("icon1.patch.zb64").read_text().strip())))
           PY
           (cd src/Main && patch --batch -p1 < ../../icon1.patch)
-          curl -L --fail -o conceal_icon1.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/1533aef695edcd23e9c8b1d528f986c6a7fae4f5dd7200/.github/internal/conceal_icon1.py"
+          curl -L --fail -o conceal_icon1.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/1533aef695edcd23e9c8eaf1398b277c25f8a404/.github/internal/conceal_icon1.py"
           python conceal_icon1.py
           curl -L --fail -o headliner.patch.zb64 "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/1faecaeffd2c2da40c1309690a4f1737637a057d/.github/internal/headliner.patch.zb64"
           python - <<'PY'
