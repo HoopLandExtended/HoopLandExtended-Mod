@@ -1,0 +1,326 @@
+name: Internal Grab & Go ICON prototype
+
+on:
+  push:
+    paths:
+      - '.github/workflows/internal-grab-go-icon.yml'
+      - '.github/internal/gg.part1'
+      - '.github/internal/gg.part2'
+      - '.github/internal/gg.part3'
+      - '.github/internal/gg.part4'
+      - '.github/internal/gg.part5'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools
+
+      - name: Recover alpha.3 source and dependencies
+        run: |
+          set -euo pipefail
+          curl -L --fail -o hle.zip "https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/download/v0.2.0-alpha.3/HoopLandExtended-0.2.0-alpha.3-win-x64.zip"
+          unzip -q hle.zip -d pkg
+          mkdir -p src/Main
+          ./.tools/ilspycmd -p -o src/Main pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.dll
+
+          curl -L --fail -o bep.zip "https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip"
+          curl -L --fail -o unity.zip "https://unity.bepinex.dev/libraries/2022.3.62.zip"
+          mkdir -p refs/bep refs/unity
+          unzip -q bep.zip -d refs/bep
+          unzip -q unity.zip -d refs/unity
+
+      - name: Normalize recovered source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path("src/Main/HoopLandExpanded.csproj")
+          s=p.read_text()
+          s=s.replace("<LangVersion>14.0</LangVersion>","<LangVersion>12.0</LangVersion>")
+          s=s.replace('<Reference Include="0Harmony" />','<Reference Include="0Harmony"><HintPath>../../refs/bep/BepInEx/core/0Harmony.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="UnityEngine.CoreModule" />','<Reference Include="UnityEngine.CoreModule"><HintPath>../../refs/unity/UnityEngine.CoreModule.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="Il2CppInterop.Runtime" />','<Reference Include="Il2CppInterop.Runtime"><HintPath>../../refs/bep/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Core" />','<Reference Include="BepInEx.Core"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Core.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Unity.IL2CPP" />','<Reference Include="BepInEx.Unity.IL2CPP"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.2/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.3/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          p.write_text(s)
+
+          p=Path("src/Main/HoopLandExpanded/CustomSkills.cs")
+          p.write_text(p.read_text().replace("private readonly Random passRandom = new Random();","private readonly System.Random passRandom = new System.Random();"))
+
+          p=Path("src/Main/HoopLandExpanded/SkillLogScope.cs")
+          s=p.read_text().replace("Interlocked.Read(in included)","Interlocked.Read(ref included)").replace("Interlocked.Read(in excluded)","Interlocked.Read(ref excluded)").replace("Interlocked.Read(in unresolved)","Interlocked.Read(ref unresolved)").replace("Interlocked.Read(in suppressed)","Interlocked.Read(ref suppressed)")
+          p.write_text(s)
+
+          p=Path("src/Main/HoopLandExpanded/SkillIconImages.cs")
+          s=p.read_text()
+          old='byte* ptr = stackalloc byte[8];\n\t\t// IL cpblk instruction\n\t\tUnsafe.CopyBlock(ptr, ref _003CPrivateImplementationDetails_003E._4C4B6A3BE1314AB86138BEF4314DDE022E600960D8689A2C8F8631802D20DAB6, 8);\n\t\tReadOnlySpan<byte> other = new Span<byte>(ptr, 8);'
+          new='ReadOnlySpan<byte> other = new byte[8] { 137, 80, 78, 71, 13, 10, 26, 10 };'
+          if old not in s:
+              raise SystemExit("PNG decompile pattern missing")
+          p.write_text(s.replace(old,new))
+          PY
+
+      - name: Apply proven four-ICON baseline
+        run: |
+          set -euo pipefail
+
+          curl -L --fail -o icon1.patch.zb64 "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/dbc851b56f0d05e102985116d722a54f522706e8/.github/internal/icon1.patch.zb64"
+          python - <<'PY'
+          from pathlib import Path
+          import base64,zlib
+          Path("icon1.patch").write_bytes(zlib.decompress(base64.b64decode(Path("icon1.patch.zb64").read_text().strip())))
+          PY
+          (cd src/Main && patch --batch -p1 < ../../icon1.patch)
+
+          curl -L --fail -o conceal_icon1.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/1533aef695edcd23e9c8eaf1398b277c25f8a404/.github/internal/conceal_icon1.py"
+          python conceal_icon1.py
+
+          curl -L --fail -o headliner.patch.zb64 "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/1faecaeffd2c2da40c1309690a4f1737637a057d/.github/internal/headliner.patch.zb64"
+          python - <<'PY'
+          from pathlib import Path
+          import base64,zlib
+          Path("headliner.patch").write_bytes(zlib.decompress(base64.b64decode(Path("headliner.patch.zb64").read_text().strip())))
+          PY
+          (cd src/Main && patch --batch -p1 < ../../headliner.patch)
+
+          curl -L --fail -o table-setter.patch.zb64 "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/a263adaa250dadfb256245adbd3e2f5e15f5652c/.github/internal/table-setter.patch.zb64"
+          python - <<'PY'
+          from pathlib import Path
+          import base64,zlib
+          Path("table-setter.patch").write_bytes(zlib.decompress(base64.b64decode(Path("table-setter.patch.zb64").read_text().strip())))
+          PY
+          (cd src/Main && patch --batch -p1 < ../../table-setter.patch)
+
+          for i in 1 2 3 4; do
+            curl -L --fail -o "twf.part$i" "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/4694085ed02ee454796b8dc4a63c8ed2d7d5474d/.github/internal/twf.part$i"
+          done
+          python - <<'PY'
+          from pathlib import Path
+          import base64,hashlib,zlib
+
+          hashes=[
+            "d117a2e0139e81c9aae07e1dfb9c0defcd679f0e542efc446bdbc6524ebab086",
+            "b0026a73a59a0eeca926d12897d7996edfebfd73cb4c7d565f0676dac9f89364",
+            "ed78644a70141737d38de069428b12646ecd13f6cc14d10a8a09738a1a7f41cb",
+            "77016780c79900a1179f0226e63c0c4062c304e051c9417b3a318f2dad31fb36",
+          ]
+          parts=[]
+          for i,expected in enumerate(hashes,1):
+              value=Path(f"twf.part{i}").read_text().strip()
+              if len(value)!=1550 or hashlib.sha256(value.encode()).hexdigest()!=expected:
+                  raise SystemExit(f"Two-Way Force baseline part {i} verification failed")
+              parts.append(value)
+          encoded="".join(parts)
+          if hashlib.sha256(encoded.encode()).hexdigest()!="1a6a2bb6198b3cac6d9adf0a4ff69eba867ce1e2ad91b5de35c2a019939963bf":
+              raise SystemExit("Two-Way Force baseline combined hash mismatch")
+          patch=zlib.decompress(base64.b64decode(encoded,validate=True))
+          if not patch.startswith(b"diff -ruN table_work/") or patch.count(b"TwoWayForce") < 20:
+              raise SystemExit("Two-Way Force baseline content validation failed")
+          Path("two-way-force.patch").write_bytes(patch)
+          PY
+          (cd src/Main && patch --batch -p1 < ../../two-way-force.patch)
+
+      - name: Apply Grab & Go
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import base64,hashlib,zlib
+
+          expected_lengths=[1500,1500,1500,1500,796]
+          expected_hashes=[
+            "522b03e14113fee2ca2f572d9e758e550821a55e3efdd4f284b454243f47b2c2",
+            "79dbd43b0230ca02b35158158e925f5e44b326666d178fa3c3b19df93fe2410d",
+            "545889945b9cd7c88565e61ab57b70f4b2b7cd095ec428f09f00aa8dbdb100b8",
+            "793d29ecf3b6eea5bbd8905964efa7bdce082d51d5755071ad3bb40eda0184e0",
+            "fce2a0adc286ba8d9dbcc1e74abdb2ba9c63a1ac0a04684b259b7e6dd709ce61",
+          ]
+          parts=[]
+          for i,(length,expected) in enumerate(zip(expected_lengths,expected_hashes),1):
+              value=Path(f".github/internal/gg.part{i}").read_text().strip()
+              actual=hashlib.sha256(value.encode()).hexdigest()
+              if len(value)!=length:
+                  raise SystemExit(f"Grab & Go part {i} length mismatch: {len(value)}")
+              if actual!=expected:
+                  raise SystemExit(f"Grab & Go part {i} hash mismatch: {actual}")
+              parts.append(value)
+
+          encoded="".join(parts)
+          if len(encoded)!=6796:
+              raise SystemExit(f"Grab & Go combined length mismatch: {len(encoded)}")
+          if hashlib.sha256(encoded.encode()).hexdigest()!="f0582b1d63662f514d354c9f126c72c228cfdba9e6984b0a142112c4062d75ab":
+              raise SystemExit("Grab & Go combined hash mismatch")
+
+          patch=zlib.decompress(base64.b64decode(encoded,validate=True))
+          if not patch.startswith(b"--- grabgo_base/") or patch.count(b"GrabGo") < 20:
+              raise SystemExit("Grab & Go decoded patch content validation failed")
+          if len(patch)!=18598:
+              raise SystemExit(f"Grab & Go decoded patch length mismatch: {len(patch)}")
+          Path("grab-go.patch").write_bytes(patch)
+          print("PASS: Grab & Go patch transport verified")
+          PY
+          (cd src/Main && patch --batch -p1 < ../../grab-go.patch)
+
+      - name: Build complete Breakout prototype
+        run: |
+          set -euo pipefail
+          dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
+          mkdir -p artifact
+          cp src/Main/bin/Release/net6.0/HoopLandExpanded.dll artifact/
+
+      - name: Test Grab & Go and all Breakout regressions
+        run: |
+          set -euo pipefail
+          mkdir -p verify/IconSmoke
+          cat > verify/IconSmoke/IconSmoke.csproj <<'EOF'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <OutputType>Exe</OutputType>
+              <TargetFramework>net8.0</TargetFramework>
+              <ImplicitUsings>enable</ImplicitUsings>
+              <Nullable>enable</Nullable>
+              <LangVersion>12.0</LangVersion>
+            </PropertyGroup>
+            <ItemGroup>
+              <ProjectReference Include="../../src/Main/HoopLandExpanded.csproj" />
+            </ItemGroup>
+          </Project>
+          EOF
+
+          cat > verify/IconSmoke/Program.cs <<'EOF'
+          using System.Text;
+          using HoopLandExpanded;
+
+          static void Check(bool value, string name)
+          {
+              if (!value) throw new Exception("FAIL: " + name);
+              Console.WriteLine("PASS: " + name);
+          }
+
+          // Grab & Go pure qualification and effect boundaries.
+          Check(IconRules.GrabGoQualifies(20,30,8.0,8.0,8.0,8.0), "Grab & Go exact percentile cutoffs qualify");
+          Check(!IconRules.GrabGoQualifies(19,30,8.0,8.0,8.0,8.0), "Grab & Go two-thirds games gate");
+          Check(!IconRules.GrabGoQualifies(20,30,7.9,8.0,8.0,8.0), "Grab & Go defensive-rebound percentile gate");
+          Check(!IconRules.GrabGoQualifies(20,30,8.0,8.0,7.9,8.0), "Grab & Go assist percentile gate");
+          Check(IconRules.GrabGoWindow(0f) && IconRules.GrabGoWindow(5.99f) && !IconRules.GrabGoWindow(6f), "Grab & Go six-second window boundary");
+          Check(Math.Abs(IconRules.GrabGoSpeed(10f,true)-11.5f)<0.0001f, "Grab & Go fifteen-percent movement");
+          Check(Math.Abs(IconRules.GrabGoPass(10f,true)-14f)<0.0001f, "Grab & Go plus-four outlet passing");
+          Check(Math.Abs(IconRules.GrabGoStaminaFactor(true)-0.5f)<0.0001f && Math.Abs(IconRules.GrabGoStaminaFactor(false)-1f)<0.0001f, "Grab & Go fifty-percent dribble stamina factor");
+
+          string College(int phase, int targetGames, int targetRebounds, int targetOffensiveRebounds, int targetAssists)
+          {
+              var roster=new List<object>
+              {
+                  new { id=7, league=1, stats=new[]{new{yr=2026,league=1,season=new[]{new{GP=targetGames,REB=targetRebounds,ORB=targetOffensiveRebounds,AST=targetAssists}}}}, awards=Array.Empty<object>() },
+                  new { id=8, league=1, stats=new[]{new{yr=2026,league=1,season=new[]{new{GP=30,REB=240,ORB=30,AST=270}}}}, awards=Array.Empty<object>() },
+                  new { id=9, league=1, stats=new[]{new{yr=2026,league=1,season=new[]{new{GP=30,REB=300,ORB=30,AST=210}}}}, awards=Array.Empty<object>() }
+              };
+              for(int id=10;id<47;id++)
+              {
+                  roster.Add(new { id, league=1, stats=new[]{new{yr=2026,league=1,season=new[]{new{GP=30,REB=180,ORB=30,AST=150}}}}, awards=Array.Empty<object>() });
+              }
+              var payload=new
+              {
+                  leagueType=1,
+                  season=new { currentYear=2026, startingYear=2026, playerId=7, phase },
+                  teams=new[]{new{id=10,roster=roster.ToArray()}}
+              };
+              return System.Text.Json.JsonSerializer.Serialize(payload);
+          }
+
+          // 40 qualified players -> top 3% = top two. Player 7 is second in both metrics.
+          using (var save=new NativeSkillSave(Encoding.UTF8.GetBytes(College(11,30,300,60,240))))
+              Check(save.CollegeGrabGoPlayerIds().Contains(7), "native Grab & Go dual top-three-percent qualification");
+
+          using (var save=new NativeSkillSave(Encoding.UTF8.GetBytes(College(11,19,300,60,240))))
+              Check(!save.CollegeGrabGoPlayerIds().Contains(7), "native Grab & Go minimum-games gate");
+
+          using (var save=new NativeSkillSave(Encoding.UTF8.GetBytes(College(11,30,240,60,240))))
+              Check(!save.CollegeGrabGoPlayerIds().Contains(7), "native Grab & Go defensive-rebound percentile gate");
+
+          using (var save=new NativeSkillSave(Encoding.UTF8.GetBytes(College(11,30,300,60,180))))
+              Check(!save.CollegeGrabGoPlayerIds().Contains(7), "native Grab & Go assist percentile gate");
+
+          using (var save=new NativeSkillSave(Encoding.UTF8.GetBytes(College(10,30,300,60,240))))
+              Check(save.CollegeGrabGoPlayerIds().Length==0, "Grab & Go does not unlock before postseason phase");
+
+          var icon=CustomSkillCatalog.GrabGo;
+          Check(icon.Id=="HLE_IC04" && icon.Icon && icon.IconFamily=="Breakout" && icon.Cost==3 && icon.MaximumRank==1, "Grab & Go catalog identity/cost/rank");
+
+          var locked=SkillPresentationPolicy.Resolve(icon,0);
+          Check(!locked.Revealed && locked.Label.Contains("ICON"), "locked Grab & Go classification visible");
+          Check(locked.Effect=="Unlock this ICON to reveal its requirements and effects.", "locked Grab & Go effect concealed");
+          Check(string.IsNullOrEmpty(locked.Requirement) && string.IsNullOrEmpty(SkillRequirementPolicy.CatalogRequirement(icon)), "locked Grab & Go requirement concealed");
+
+          var earned=SkillPresentationPolicy.Resolve(icon,1);
+          Check(earned.Revealed && earned.Effect==icon.Description, "earned Grab & Go effect revealed");
+          Check(earned.Requirement.Contains("top 3%",StringComparison.OrdinalIgnoreCase), "earned Grab & Go requirement revealed");
+
+          // Full Breakout catalog identity/order.
+          var ids=CustomSkillCatalog.IconDefinitions.Select(x=>x.Id).ToArray();
+          Check(ids.SequenceEqual(new[]{"HLE_IC01","HLE_IC02","HLE_IC03","HLE_IC04","HLE_IC05"}), "complete five-ICON Breakout catalog order");
+
+          // Existing Breakout regression.
+          Check(IconRules.TwoWayForceQualifies(20,30,30.0,30.0,3.0,3.0,0.0,4.0), "Two-Way Force qualification regression");
+          Check(Math.Abs(IconRules.TwoWayForceDefense(10f,true)-12f)<0.0001f, "Two-Way Force defense regression");
+          Check(IconRules.TableSetterQualifies(20,30,10.0,9.333333333,200,500,40), "Table Setter qualification regression");
+          Check(Math.Abs(IconRules.TableSetterPass(10f,true)-14f)<0.0001f, "Table Setter pass regression");
+          Check(IconRules.HeadlinerQualifies(20,30,40.0,34.0), "Headliner qualification regression");
+          Check(Math.Abs(IconRules.HeadlinerSpeed(10f,true)-11.2f)<0.0001f, "Headliner speed regression");
+          Check(IconRules.MarchHeroWindow(1,11,2,480,40,8), "March Hero activation regression");
+          Check(Math.Abs(IconRules.Contest(10f,true)-8f)<0.0001f, "March Hero contest regression");
+
+          Console.WriteLine("ALL GRAB & GO ICON TESTS PASSED");
+          Console.WriteLine("ALL FIVE BREAKOUT ICON REGRESSIONS PASSED");
+          EOF
+
+          dotnet run --project verify/IconSmoke/IconSmoke.csproj -c Release --nologo | tee artifact/breakout-icons-smoke-test.txt
+
+          grep -q 'ArmGrabGo' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'ObserveGrabGoPossession' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'GrabGoForwardPass' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'icon-grab-go-dribble-stamina' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'CollegeGrabGoPlayerIds' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'IconRules.GrabGoSpeed' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q '!customSkills.expansion.MaestroPass' src/Main/HoopLandExpanded/CustomSkills.cs
+          echo "PASS: Grab & Go live rebound/possession/outlet/stamina hooks present" | tee -a artifact/breakout-icons-smoke-test.txt
+          echo "PASS: stronger special pass precedence guard present" | tee -a artifact/breakout-icons-smoke-test.txt
+
+      - name: Record compatibility
+        run: |
+          {
+            echo "Prototype: COMPLETE BREAKOUT SET"
+            echo "Headliner (HLE_IC01)"
+            echo "Table Setter (HLE_IC02)"
+            echo "Two-Way Force (HLE_IC03)"
+            echo "Grab & Go (HLE_IC04)"
+            echo "March Hero (HLE_IC05)"
+            echo "CareerHost unchanged from public alpha.3"
+            echo "Finance assemblies unchanged from public alpha.3"
+            echo "HLE checkpoint schema unchanged"
+            echo "Existing alpha.3 HLE careers require no migration"
+            echo "Grab & Go runtime effect is live-game only in this prototype"
+            sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.CareerHost.dll
+            sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.Finance.dll
+            sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.Finance.NativeImport.dll
+            sha256sum artifact/HoopLandExpanded.dll
+          } > artifact/compatibility-invariants.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: breakout-icons-complete-prototype
+          path: artifact
+          retention-days: 1
