@@ -5,6 +5,10 @@ on:
     paths:
       - '.github/workflows/internal-two-way-force-icon.yml'
       - '.github/internal/two-way-force.patch.zb64'
+      - '.github/internal/twf.part1'
+      - '.github/internal/twf.part2'
+      - '.github/internal/twf.part3'
+      - '.github/internal/twf.part4'
 
 permissions:
   contents: read
@@ -104,29 +108,37 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import base64,zlib,binascii
-          encoded=Path(".github/internal/two-way-force.patch.zb64").read_text().strip()
-          def decode(value):
-              raw=base64.b64decode(value, validate=True)
-              patch=zlib.decompress(raw)
-              if not patch.startswith(b"diff -ruN table_work/") or patch.count(b"TwoWayForce") < 20:
-                  raise ValueError("decoded patch failed content validation")
-              return patch
-          try:
-              patch=decode(encoded)
-          except Exception:
-              patch=None
-              for i in range(len(encoded)):
-                  candidate=encoded[:i]+encoded[i+1:]
-                  try:
-                      patch=decode(candidate)
-                      print(f"Recovered one-character transport error at offset {i}")
-                      break
-                  except Exception:
-                      pass
-              if patch is None:
-                  raise
+          import base64, hashlib, zlib
+
+          expected_parts = [
+              "d117a2e0139e81c9aae07e1dfb9c0defcd679f0e542efc446bdbc6524ebab086",
+              "b0026a73a59a0eeca926d12897d7996edfebfd73cb4c7d565f0676dac9f89364",
+              "ed78644a70141737d38de069428b12646ecd13f6cc14d10a8a09738a1a7f41cb",
+              "77016780c79900a1179f0226e63c0c4062c304e051c9417b3a318f2dad31fb36",
+          ]
+          parts=[]
+          for i, expected in enumerate(expected_parts, 1):
+              value=Path(f".github/internal/twf.part{i}").read_text().strip()
+              actual=hashlib.sha256(value.encode()).hexdigest()
+              if actual != expected:
+                  raise SystemExit(f"Two-Way Force patch part {i} hash mismatch: {actual}")
+              if len(value) != 1550:
+                  raise SystemExit(f"Two-Way Force patch part {i} length mismatch: {len(value)}")
+              parts.append(value)
+
+          encoded="".join(parts)
+          actual=hashlib.sha256(encoded.encode()).hexdigest()
+          expected="1a6a2bb6198b3cac6d9adf0a4ff69eba867ce1e2ad91b5de35c2a019939963bf"
+          if actual != expected:
+              raise SystemExit(f"Two-Way Force combined patch hash mismatch: {actual}")
+          if len(encoded) != 6200:
+              raise SystemExit(f"Two-Way Force combined patch length mismatch: {len(encoded)}")
+
+          patch=zlib.decompress(base64.b64decode(encoded, validate=True))
+          if not patch.startswith(b"diff -ruN table_work/") or patch.count(b"TwoWayForce") < 20:
+              raise SystemExit("Two-Way Force decoded patch failed content validation")
           Path("two-way-force.patch").write_bytes(patch)
+          print("PASS: Two-Way Force patch transport verified")
           PY
           (cd src/Main && patch --batch -p1 < ../../two-way-force.patch)
 
