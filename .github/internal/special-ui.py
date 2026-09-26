@@ -33,6 +33,8 @@ icon=r'''\tprivate void PresentIconRow(object row, object player, CustomSkillDef
 \t}
 '''
 
+icon=icon.replace('\\t','\t')
+
 s=s[:icon_start]+icon+s[legend_start:]
 
 legend_start=s.index('\tprivate void PresentLegendaryRow(object row, object player, CustomSkillDefinition d, bool editor)')
@@ -64,6 +66,8 @@ legend=r'''\tprivate void PresentLegendaryRow(object row, object player, CustomS
 \t}
 '''
 
+legend=legend.replace('\\t','\t')
+
 s=s[:legend_start]+legend+s[next_start:]
 
 old=r'''\t\t\tif ((object)customSkillDefinition != null && customSkillDefinition.Icon)
@@ -90,6 +94,9 @@ new=r'''\t\t\tif ((object)customSkillDefinition != null && (customSkillDefinitio
 \t\t\t\tm.DisplayText(__instance, "description", details);
 \t\t\t}
 '''
+
+old=old.replace('\\t','\t')
+new=new.replace('\\t','\t')
 
 if s.count(old)!=1:
     raise SystemExit(f"achievement presentation anchor mismatch: {s.count(old)}")
