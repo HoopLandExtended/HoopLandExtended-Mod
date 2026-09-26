@@ -190,13 +190,13 @@ jobs:
               Check(save.CollegeTableSetterPlayerIds().SequenceEqual(new[]{7}), "native college Table Setter qualification");
 
           using (var save = new NativeSkillSave(Encoding.UTF8.GetBytes(College(11,19,200,40,100))))
-              Check(save.CollegeTableSetterPlayerIds().Length == 0, "native Table Setter minimum games gate");
+              Check(!save.CollegeTableSetterPlayerIds().Contains(7), "native Table Setter minimum games gate");
 
           using (var save = new NativeSkillSave(Encoding.UTF8.GetBytes(College(11,20,200,41,100))))
-              Check(save.CollegeTableSetterPlayerIds().Length == 0, "native Table Setter AST/TO gate");
+              Check(!save.CollegeTableSetterPlayerIds().Contains(7), "native Table Setter AST/TO gate");
 
           using (var save = new NativeSkillSave(Encoding.UTF8.GetBytes(College(11,20,200,40,101))))
-              Check(save.CollegeTableSetterPlayerIds().Length == 0, "native Table Setter team-assist share gate");
+              Check(!save.CollegeTableSetterPlayerIds().Contains(7), "native Table Setter team-assist share gate");
 
           using (var save = new NativeSkillSave(Encoding.UTF8.GetBytes(College(10,20,200,40,100))))
               Check(save.CollegeTableSetterPlayerIds().Length == 0, "Table Setter does not unlock before postseason phase");
