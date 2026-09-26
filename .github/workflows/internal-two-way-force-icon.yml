@@ -104,9 +104,29 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import base64,zlib
+          import base64,zlib,binascii
           encoded=Path(".github/internal/two-way-force.patch.zb64").read_text().strip()
-          Path("two-way-force.patch").write_bytes(zlib.decompress(base64.b64decode(encoded)))
+          def decode(value):
+              raw=base64.b64decode(value, validate=True)
+              patch=zlib.decompress(raw)
+              if not patch.startswith(b"diff -ruN table_work/") or patch.count(b"TwoWayForce") < 20:
+                  raise ValueError("decoded patch failed content validation")
+              return patch
+          try:
+              patch=decode(encoded)
+          except Exception:
+              patch=None
+              for i in range(len(encoded)):
+                  candidate=encoded[:i]+encoded[i+1:]
+                  try:
+                      patch=decode(candidate)
+                      print(f"Recovered one-character transport error at offset {i}")
+                      break
+                  except Exception:
+                      pass
+              if patch is None:
+                  raise
+          Path("two-way-force.patch").write_bytes(patch)
           PY
           (cd src/Main && patch --batch -p1 < ../../two-way-force.patch)
 
