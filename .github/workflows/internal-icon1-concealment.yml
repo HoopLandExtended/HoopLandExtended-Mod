@@ -97,11 +97,19 @@ jobs:
           # viewed-player presentation layer resolves whether the ICON is earned.
           p=Path("src/Main/HoopLandExpanded/CustomSkills.cs")
           s=p.read_text()
-          old='''\t\taccess.Set(skill, "description", definition.Legendary ? "Unlock this legendary skill to reveal its requirements and effects." : definition.Description);\n\t\taccess.Set(skill, "unlockDescription", SkillRequirementPolicy.CatalogRequirement(definition));\n\t\taccess.Set(skill, "actionRequirement", definition.Legendary ? "" : SkillRequirementPolicy.Action(definition));'''
-          new='''\t\tbool special = definition.Legendary || definition.Icon;\n\t\tstring mystery = definition.Icon ? "Unlock this ICON to reveal its requirements and effects." : "Unlock this legendary skill to reveal its requirements and effects.";\n\t\taccess.Set(skill, "description", special ? mystery : definition.Description);\n\t\taccess.Set(skill, "unlockDescription", special ? "" : SkillRequirementPolicy.CatalogRequirement(definition));\n\t\taccess.Set(skill, "actionRequirement", special ? "" : SkillRequirementPolicy.Action(definition));'''
-          if old not in s:
-              raise SystemExit("CatalogPresentation expected block not found")
-          s=s.replace(old,new)
+          import re
+          replacement='''\tprivate void CatalogPresentation(object skill, CustomSkillDefinition definition)
+\t{
+\t\tbool special = definition.Legendary || definition.Icon;
+\t\tstring mystery = definition.Icon ? "Unlock this ICON to reveal its requirements and effects." : "Unlock this legendary skill to reveal its requirements and effects.";
+\t\taccess.Set(skill, "description", special ? mystery : definition.Description);
+\t\taccess.Set(skill, "unlockDescription", special ? "" : SkillRequirementPolicy.CatalogRequirement(definition));
+\t\taccess.Set(skill, "actionRequirement", special ? "" : SkillRequirementPolicy.Action(definition));
+\t}
+'''
+          s,n=re.subn(r'\tprivate void CatalogPresentation\(object skill, CustomSkillDefinition definition\)\n\t\{.*?\n\t\}\n(?=\n\tprivate )', replacement, s, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit(f"CatalogPresentation replacement count={n}")
 
           # The prototype already routes ICON rows through the special presentation
           # path. Ensure the achievement/details surface also uses resolved text.
