@@ -1,0 +1,183 @@
+name: Internal Headliner ICON prototype
+
+on:
+  push:
+    paths:
+      - '.github/workflows/internal-headliner-icon.yml'
+      - '.github/internal/headliner.patch.zb64'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools
+      - name: Recover alpha.3 source and dependencies
+        run: |
+          set -euo pipefail
+          curl -L --fail -o hle.zip "https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/download/v0.2.0-alpha.3/HoopLandExtended-0.2.0-alpha.3-win-x64.zip"
+          unzip -q hle.zip -d pkg
+          mkdir -p src/Main
+          ./.tools/ilspycmd -p -o src/Main pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.dll
+          curl -L --fail -o bep.zip "https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip"
+          curl -L --fail -o unity.zip "https://unity.bepinex.dev/libraries/2022.3.62.zip"
+          mkdir -p refs/bep refs/unity
+          unzip -q bep.zip -d refs/bep
+          unzip -q unity.zip -d refs/unity
+      - name: Normalize recovered source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("src/Main/HoopLandExpanded.csproj")
+          s=p.read_text()
+          s=s.replace("<LangVersion>14.0</LangVersion>","<LangVersion>12.0</LangVersion>")
+          s=s.replace('<Reference Include="0Harmony" />','<Reference Include="0Harmony"><HintPath>../../refs/bep/BepInEx/core/0Harmony.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="UnityEngine.CoreModule" />','<Reference Include="UnityEngine.CoreModule"><HintPath>../../refs/unity/UnityEngine.CoreModule.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="Il2CppInterop.Runtime" />','<Reference Include="Il2CppInterop.Runtime"><HintPath>../../refs/bep/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Core" />','<Reference Include="BepInEx.Core"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Core.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Unity.IL2CPP" />','<Reference Include="BepInEx.Unity.IL2CPP"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.2/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.3/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          p.write_text(s)
+          p=Path("src/Main/HoopLandExpanded/CustomSkills.cs")
+          p.write_text(p.read_text().replace("private readonly Random passRandom = new Random();","private readonly System.Random passRandom = new System.Random();"))
+          p=Path("src/Main/HoopLandExpanded/SkillLogScope.cs")
+          s=p.read_text().replace("Interlocked.Read(in included)","Interlocked.Read(ref included)").replace("Interlocked.Read(in excluded)","Interlocked.Read(ref excluded)").replace("Interlocked.Read(in unresolved)","Interlocked.Read(ref unresolved)").replace("Interlocked.Read(in suppressed)","Interlocked.Read(ref suppressed)")
+          p.write_text(s)
+          p=Path("src/Main/HoopLandExpanded/SkillIconImages.cs")
+          s=p.read_text()
+          old='byte* ptr = stackalloc byte[8];\n\t\t// IL cpblk instruction\n\t\tUnsafe.CopyBlock(ptr, ref _003CPrivateImplementationDetails_003E._4C4B6A3BE1314AB86138BEF4314DDE022E600960D8689A2C8F8631802D20DAB6, 8);\n\t\tReadOnlySpan<byte> other = new Span<byte>(ptr, 8);'
+          new='ReadOnlySpan<byte> other = new byte[8] { 137, 80, 78, 71, 13, 10, 26, 10 };'
+          if old not in s: raise SystemExit("PNG decompile pattern missing")
+          p.write_text(s.replace(old,new))
+          PY
+      - name: Apply proven March Hero and concealment baseline
+        run: |
+          set -euo pipefail
+          curl -L --fail -o icon1.patch.zb64 "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/dbc851b56f0d05e102985116d722a54f522706e8/.github/internal/icon1.patch.zb64"
+          python - <<'PY'
+          from pathlib import Path
+          import base64,zlib
+          Path("icon1.patch").write_bytes(zlib.decompress(base64.b64decode(Path("icon1.patch.zb64").read_text().strip())))
+          PY
+          (cd src/Main && patch --batch -p1 < ../../icon1.patch)
+          curl -L --fail -o conceal_icon1.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/1533aef695edcd23e9c8eaf1398b277c25f8a404/.github/internal/conceal_icon1.py"
+          python conceal_icon1.py
+      - name: Apply Headliner
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import base64,zlib
+          Path("headliner.patch").write_bytes(zlib.decompress(base64.b64decode(Path(".github/internal/headliner.patch.zb64").read_text().strip())))
+          PY
+          (cd src/Main && patch --batch -p1 < ../../headliner.patch)
+      - name: Build prototype
+        run: |
+          set -euo pipefail
+          dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
+          mkdir -p artifact
+          cp src/Main/bin/Release/net6.0/HoopLandExpanded.dll artifact/
+      - name: Test Headliner rules, unlock, concealment, and March Hero regression
+        run: |
+          set -euo pipefail
+          mkdir -p verify/IconSmoke
+          cat > verify/IconSmoke/IconSmoke.csproj <<'EOF'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <OutputType>Exe</OutputType>
+              <TargetFramework>net8.0</TargetFramework>
+              <ImplicitUsings>enable</ImplicitUsings>
+              <Nullable>enable</Nullable>
+              <LangVersion>12.0</LangVersion>
+            </PropertyGroup>
+            <ItemGroup>
+              <ProjectReference Include="../../src/Main/HoopLandExpanded.csproj" />
+            </ItemGroup>
+          </Project>
+          EOF
+          cat > verify/IconSmoke/Program.cs <<'EOF'
+          using System.Text;
+          using HoopLandExpanded;
+
+          static void Check(bool value, string name)
+          {
+              if (!value) throw new Exception("FAIL: " + name);
+              Console.WriteLine("PASS: " + name);
+          }
+
+          Check(IconRules.HeadlinerQualifies(20, 30, 40.0, 34.0), "two-thirds games and 15% lead qualifies");
+          Check(!IconRules.HeadlinerQualifies(19, 30, 40.0, 34.0), "insufficient games rejected");
+          Check(!IconRules.HeadlinerQualifies(20, 30, 39.0, 34.0), "sub-15% scoring lead rejected");
+          Check(IconRules.HeadlinerStreak(0, true) == 1, "first scoring possession");
+          Check(IconRules.HeadlinerStreak(1, true) == 2 && IconRules.HeadlinerArmed(2), "second scoring possession arms Headliner");
+          Check(IconRules.HeadlinerStreak(3, false) == 0 && !IconRules.HeadlinerArmed(0), "empty possession resets scoring streak");
+          Check(Math.Abs(IconRules.HeadlinerSpeed(10f, true) - 11.2f) < 0.0001f, "12 percent ballhandler speed");
+          Check(Math.Abs(IconRules.HeadlinerContest(10f, true) - 7.5f) < 0.0001f, "25 percent contest reduction");
+
+          string College(int phase, int leaderGames, int leaderPoints)
+          {
+              return $$"""
+              {
+                "leagueType":1,
+                "season":{"currentYear":2026,"startingYear":2026,"playerId":7,"phase":{{phase}}},
+                "teams":[{
+                  "id":10,
+                  "roster":[
+                    {"id":7,"league":1,"stats":[{"yr":2026,"league":1,"season":[{"GP":{{leaderGames}},"PTS":{{leaderPoints}}]}],"awards":[]},
+                    {"id":8,"league":1,"stats":[{"yr":2026,"league":1,"season":[{"GP":30,"PTS":1020}]}],"awards":[]}
+                  ]
+                }]
+              }
+              """;
+          }
+
+          using (var save = new NativeSkillSave(Encoding.UTF8.GetBytes(College(11, 20, 800))))
+              Check(save.CollegeHeadlinerPlayerIds().SequenceEqual(new[]{7}), "native college scoring history qualifies Headliner");
+          using (var save = new NativeSkillSave(Encoding.UTF8.GetBytes(College(11, 19, 760))))
+              Check(save.CollegeHeadlinerPlayerIds().Length == 0, "native college minimum-games gate");
+          using (var save = new NativeSkillSave(Encoding.UTF8.GetBytes(College(10, 20, 800))))
+              Check(save.CollegeHeadlinerPlayerIds().Length == 0, "Headliner does not unlock before postseason phase");
+
+          var headliner = CustomSkillCatalog.Headliner;
+          Check(headliner.Id == "HLE_IC01" && headliner.Icon && headliner.IconFamily == "Breakout" && headliner.Cost == 3 && headliner.MaximumRank == 1, "Headliner catalog identity/cost/rank");
+          var locked = SkillPresentationPolicy.Resolve(headliner, 0);
+          Check(!locked.Revealed && locked.Label.Contains("ICON"), "locked Headliner classification visible");
+          Check(locked.Effect == "Unlock this ICON to reveal its requirements and effects.", "locked Headliner effect concealed");
+          Check(string.IsNullOrEmpty(locked.Requirement) && string.IsNullOrEmpty(SkillRequirementPolicy.CatalogRequirement(headliner)), "locked Headliner requirement concealed");
+          var earned = SkillPresentationPolicy.Resolve(headliner, 1);
+          Check(earned.Revealed && earned.Effect == headliner.Description, "earned Headliner effect revealed");
+          Check(earned.Requirement.Contains("15%", StringComparison.OrdinalIgnoreCase), "earned Headliner requirement revealed");
+
+          Check(IconRules.MarchHeroWindow(1, 11, 2, 480, 40, 8), "March Hero activation regression");
+          Check(Math.Abs(IconRules.Contest(10f, true) - 8f) < 0.0001f, "March Hero contest regression");
+
+          Console.WriteLine("ALL HEADLINER ICON TESTS PASSED");
+          EOF
+          dotnet run --project verify/IconSmoke/IconSmoke.csproj -c Release --nologo | tee artifact/headliner-smoke-test.txt
+      - name: Record compatibility
+        run: |
+          {
+            echo "Prototype: Headliner (HLE_IC01) + March Hero (HLE_IC05)"
+            echo "CareerHost unchanged from public alpha.3"
+            echo "Finance assemblies unchanged from public alpha.3"
+            echo "HLE checkpoint schema unchanged"
+            echo "Existing alpha.3 HLE careers require no migration"
+            echo "Headliner runtime effect is live-game only in this prototype"
+            sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.CareerHost.dll
+            sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.Finance.dll
+            sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.Finance.NativeImport.dll
+            sha256sum artifact/HoopLandExpanded.dll
+          } > artifact/compatibility-invariants.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: headliner-icon-prototype
+          path: artifact
+          retention-days: 1
