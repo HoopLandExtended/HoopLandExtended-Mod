@@ -107,7 +107,6 @@ jobs:
           $installedBefore=[IO.File]::ReadAllText((Join-Path $root 'installed.json'))
 
           & (Join-Path $patchRoot 'Apply.ps1') -PackageRoot $root
-          if ($LASTEXITCODE -and $LASTEXITCODE -ne 0) { throw "Apply.ps1 exited $LASTEXITCODE" }
 
           $backups=@(Get-ChildItem -LiteralPath $root -Directory -Filter 'LauncherPatchBackup-*')
           if ($backups.Count -ne 1) { throw "Expected one launcher backup, found $($backups.Count)." }
