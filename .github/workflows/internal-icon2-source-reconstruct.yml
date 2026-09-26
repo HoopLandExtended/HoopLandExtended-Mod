@@ -1,0 +1,85 @@
+name: Internal ICON2 source reconstruction
+
+on:
+  push:
+    paths:
+      - '.github/workflows/internal-icon2-source-reconstruct.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools
+      - name: Recover alpha.3 and dependencies
+        run: |
+          set -euo pipefail
+          curl -L --fail -o hle.zip "https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/download/v0.2.0-alpha.3/HoopLandExtended-0.2.0-alpha.3-win-x64.zip"
+          unzip -q hle.zip -d pkg
+          mkdir -p src/Main
+          ./.tools/ilspycmd -p -o src/Main pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.dll
+          curl -L --fail -o bep.zip "https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip"
+          curl -L --fail -o unity.zip "https://unity.bepinex.dev/libraries/2022.3.62.zip"
+          mkdir -p refs/bep refs/unity
+          unzip -q bep.zip -d refs/bep
+          unzip -q unity.zip -d refs/unity
+      - name: Normalize recovered source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("src/Main/HoopLandExpanded.csproj")
+          s=p.read_text()
+          s=s.replace("<LangVersion>14.0</LangVersion>","<LangVersion>12.0</LangVersion>")
+          s=s.replace('<Reference Include="0Harmony" />','<Reference Include="0Harmony"><HintPath>../../refs/bep/BepInEx/core/0Harmony.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="UnityEngine.CoreModule" />','<Reference Include="UnityEngine.CoreModule"><HintPath>../../refs/unity/UnityEngine.CoreModule.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="Il2CppInterop.Runtime" />','<Reference Include="Il2CppInterop.Runtime"><HintPath>../../refs/bep/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Core" />','<Reference Include="BepInEx.Core"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Core.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Unity.IL2CPP" />','<Reference Include="BepInEx.Unity.IL2CPP"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.2/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.3/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          p.write_text(s)
+          p=Path("src/Main/HoopLandExpanded/CustomSkills.cs")
+          p.write_text(p.read_text().replace("private readonly Random passRandom = new Random();","private readonly System.Random passRandom = new System.Random();"))
+          p=Path("src/Main/HoopLandExpanded/SkillLogScope.cs")
+          s=p.read_text().replace("Interlocked.Read(in included)","Interlocked.Read(ref included)").replace("Interlocked.Read(in excluded)","Interlocked.Read(ref excluded)").replace("Interlocked.Read(in unresolved)","Interlocked.Read(ref unresolved)").replace("Interlocked.Read(in suppressed)","Interlocked.Read(ref suppressed)")
+          p.write_text(s)
+          p=Path("src/Main/HoopLandExpanded/SkillIconImages.cs")
+          s=p.read_text()
+          old='byte* ptr = stackalloc byte[8];\n\t\t// IL cpblk instruction\n\t\tUnsafe.CopyBlock(ptr, ref _003CPrivateImplementationDetails_003E._4C4B6A3BE1314AB86138BEF4314DDE022E600960D8689A2C8F8631802D20DAB6, 8);\n\t\tReadOnlySpan<byte> other = new Span<byte>(ptr, 8);'
+          new='ReadOnlySpan<byte> other = new byte[8] { 137, 80, 78, 71, 13, 10, 26, 10 };'
+          if old not in s: raise SystemExit("PNG decompile pattern missing")
+          p.write_text(s.replace(old,new))
+          PY
+      - name: Apply proven March Hero + concealment + Headliner
+        run: |
+          set -euo pipefail
+          curl -L --fail -o icon1.patch.zb64 "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/dbc851b56f0d05e102985116d722a54f522706e8/.github/internal/icon1.patch.zb64"
+          python - <<'PY'
+          from pathlib import Path
+          import base64,zlib
+          Path("icon1.patch").write_bytes(zlib.decompress(base64.b64decode(Path("icon1.patch.zb64").read_text().strip())))
+          PY
+          (cd src/Main && patch --batch -p1 < ../../icon1.patch)
+          curl -L --fail -o conceal_icon1.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/1533aef695edcd23e9c8b1d528f986c6a7fae4f5dd7200/.github/internal/conceal_icon1.py"
+          python conceal_icon1.py
+          curl -L --fail -o headliner.patch.zb64 "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/1faecaeffd2c2da40c1309690a4f1737637a057d/.github/internal/headliner.patch.zb64"
+          python - <<'PY'
+          from pathlib import Path
+          import base64,zlib
+          Path("headliner.patch").write_bytes(zlib.decompress(base64.b64decode(Path("headliner.patch.zb64").read_text().strip())))
+          PY
+          (cd src/Main && patch --batch -p1 < ../../headliner.patch)
+      - name: Verify source builds
+        run: dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
+      - uses: actions/upload-artifact@v7
+        with:
+          name: icon2-source-reconstructed
+          path: src/Main
+          retention-days: 1
