@@ -4,6 +4,10 @@ on:
   push:
     paths:
       - '.github/workflows/internal-special-slot-source.yml'
+      - '.github/internal/special-costs.py'
+      - '.github/internal/special-hooks.py'
+      - '.github/internal/special-runtime.py'
+      - '.github/internal/special-ui.py'
 
 permissions:
   contents: read
@@ -129,10 +133,37 @@ jobs:
           Path("grab-go.patch").write_bytes(zlib.decompress(base64.b64decode(enc,validate=True)))
           PY
           (cd src/Main && patch --batch -p1 < ../../grab-go.patch)
-      - name: Verify and upload source
-        run: dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
+      - name: Apply zero-SP special-slot design
+        run: |
+          set -euo pipefail
+          python .github/internal/special-costs.py
+          python .github/internal/special-hooks.py
+          python .github/internal/special-runtime.py
+          python .github/internal/special-ui.py
+
+      - name: Build special-slot prototype
+        run: |
+          set -euo pipefail
+          dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
+          mkdir -p artifact
+          cp src/Main/bin/Release/net6.0/HoopLandExpanded.dll artifact/
+
+      - name: Verify special-slot source invariants
+        run: |
+          set -euo pipefail
+          grep -q 'Hook("special-equip", "ListSkills", "EquipSkill"' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'Hook("special-cpu", "CPUProgression", "UnlockPlayerSkills"' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'HandleSpecialEquip' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'NormalizeAllSpecialSlots("save-before")' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'NormalizeAllSpecialSlots(source)' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'OrdinarySkillPointsUnaffected = true' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'ICON SLOT: ' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'LEGENDARY SLOT: ' src/Main/HoopLandExpanded/CustomSkills.cs
+          ! grep -q 'DisplayText(row, "description", d.Description);' src/Main/HoopLandExpanded/CustomSkills.cs
+          echo "PASS: special-slot runtime, persistence, and presentation hooks present" | tee artifact/special-slot-source-checks.txt
+
       - uses: actions/upload-artifact@v7
         with:
-          name: special-slot-source
-          path: src/Main
+          name: special-slot-prototype
+          path: artifact
           retention-days: 1
