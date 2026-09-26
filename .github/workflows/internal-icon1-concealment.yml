@@ -1,0 +1,212 @@
+name: Internal March Hero concealment build
+
+on:
+  push:
+    paths:
+      - '.github/workflows/internal-icon1-concealment.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools
+
+      - name: Recover alpha.3 source and dependencies
+        run: |
+          set -euo pipefail
+          curl -L --fail -o hle.zip "https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/download/v0.2.0-alpha.3/HoopLandExtended-0.2.0-alpha.3-win-x64.zip"
+          unzip -q hle.zip -d pkg
+          mkdir -p src/Main
+          ./.tools/ilspycmd -p -o src/Main pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.dll
+
+          curl -L --fail -o bep.zip "https://builds.bepinex.dev/projects/bepinex_be/788/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.788%2B5b766a3.zip"
+          curl -L --fail -o unity.zip "https://unity.bepinex.dev/libraries/2022.3.62.zip"
+          mkdir -p refs/bep refs/unity
+          unzip -q bep.zip -d refs/bep
+          unzip -q unity.zip -d refs/unity
+
+      - name: Normalize recovered source
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p=Path("src/Main/HoopLandExpanded.csproj")
+          s=p.read_text()
+          s=s.replace("<LangVersion>14.0</LangVersion>","<LangVersion>12.0</LangVersion>")
+          s=s.replace('<Reference Include="0Harmony" />','<Reference Include="0Harmony"><HintPath>../../refs/bep/BepInEx/core/0Harmony.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="UnityEngine.CoreModule" />','<Reference Include="UnityEngine.CoreModule"><HintPath>../../refs/unity/UnityEngine.CoreModule.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="Il2CppInterop.Runtime" />','<Reference Include="Il2CppInterop.Runtime"><HintPath>../../refs/bep/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Core" />','<Reference Include="BepInEx.Core"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Core.dll</HintPath></Reference>')
+          s=s.replace('<Reference Include="BepInEx.Unity.IL2CPP" />','<Reference Include="BepInEx.Unity.IL2CPP"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.2/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          s=s.replace('pkg/HoopLandExtended-0.2.0-alpha.3/payload/','../../pkg/HoopLandExtended-0.2.0-alpha.3/payload/')
+          p.write_text(s)
+
+          cs=Path("src/Main/HoopLandExpanded/CustomSkills.cs")
+          t=cs.read_text().replace("private readonly Random passRandom = new Random();","private readonly System.Random passRandom = new System.Random();")
+          cs.write_text(t)
+
+          sl=Path("src/Main/HoopLandExpanded/SkillLogScope.cs")
+          t=sl.read_text().replace("Interlocked.Read(in included)","Interlocked.Read(ref included)").replace("Interlocked.Read(in excluded)","Interlocked.Read(ref excluded)").replace("Interlocked.Read(in unresolved)","Interlocked.Read(ref unresolved)").replace("Interlocked.Read(in suppressed)","Interlocked.Read(ref suppressed)")
+          sl.write_text(t)
+
+          si=Path("src/Main/HoopLandExpanded/SkillIconImages.cs")
+          t=si.read_text()
+          old='byte* ptr = stackalloc byte[8];\n\t\t// IL cpblk instruction\n\t\tUnsafe.CopyBlock(ptr, ref _003CPrivateImplementationDetails_003E._4C4B6A3BE1314AB86138BEF4314DDE022E600960D8689A2C8F8631802D20DAB6, 8);\n\t\tReadOnlySpan<byte> other = new Span<byte>(ptr, 8);'
+          new='ReadOnlySpan<byte> other = new byte[8] { 137, 80, 78, 71, 13, 10, 26, 10 };'
+          if old not in t: raise SystemExit("PNG signature decompile pattern not found")
+          si.write_text(t.replace(old,new))
+
+      - name: Apply proven March Hero prototype
+        run: |
+          set -euo pipefail
+          curl -L --fail -o icon1.patch.zb64 "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/dbc851b56f0d05e102985116d722a54f522706e8/.github/internal/icon1.patch.zb64"
+          python - <<'PY'
+          from pathlib import Path
+          import base64, zlib
+          Path("icon1.patch").write_bytes(zlib.decompress(base64.b64decode(Path("icon1.patch.zb64").read_text().strip())))
+          PY
+          cd src/Main
+          patch --batch -p1 < ../../icon1.patch
+
+      - name: Conceal locked ICON requirements and effects
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # Presentation policy: ICONs use the same reveal boundary as Legendaries,
+          # but retain the ICON / family label.
+          p=Path("src/Main/HoopLandExpanded/SkillPresentationPolicy.cs")
+          s=p.read_text()
+          old='''\t\tif (!skill.Legendary)\n\t\t{\n\t\t\treturn new SkillPresentationText(Legendary: false, Revealed: true, "", skill.Description, SkillRequirementPolicy.CatalogRequirement(skill));\n\t\t}\n\t\tbool flag = earnedRank > 0 && earnedRank <= skill.MaximumRank;\n\t\treturn new SkillPresentationText(Legendary: true, flag, "LEGENDARY", flag ? skill.Description : "Unlock this legendary skill to reveal its requirements and effects.", flag ? ("Unlocked by: " + skill.Action) : "");'''
+          new='''\t\tif (!skill.Legendary && !skill.Icon)\n\t\t{\n\t\t\treturn new SkillPresentationText(Legendary: false, Revealed: true, "", skill.Description, SkillRequirementPolicy.CatalogRequirement(skill));\n\t\t}\n\t\tbool flag = earnedRank > 0 && earnedRank <= skill.MaximumRank;\n\t\tif (skill.Icon)\n\t\t{\n\t\t\tstring label = string.IsNullOrWhiteSpace(skill.IconFamily) ? "ICON" : ("ICON • " + skill.IconFamily.ToUpperInvariant());\n\t\t\treturn new SkillPresentationText(Legendary: false, flag, label, flag ? skill.Description : "Unlock this ICON to reveal its requirements and effects.", flag ? ("Unlocked by: " + skill.Action) : "");\n\t\t}\n\t\treturn new SkillPresentationText(Legendary: true, flag, "LEGENDARY", flag ? skill.Description : "Unlock this legendary skill to reveal its requirements and effects.", flag ? ("Unlocked by: " + skill.Action) : "");'''
+          if old not in s:
+              raise SystemExit("SkillPresentationPolicy expected block not found")
+          p.write_text(s.replace(old,new))
+
+          # Raw native catalog must not leak ICON effect / requirement before the
+          # viewed-player presentation layer resolves whether the ICON is earned.
+          p=Path("src/Main/HoopLandExpanded/CustomSkills.cs")
+          s=p.read_text()
+          old='''\t\taccess.Set(skill, "description", definition.Legendary ? "Unlock this legendary skill to reveal its requirements and effects." : definition.Description);\n\t\taccess.Set(skill, "unlockDescription", SkillRequirementPolicy.CatalogRequirement(definition));\n\t\taccess.Set(skill, "actionRequirement", definition.Legendary ? "" : SkillRequirementPolicy.Action(definition));'''
+          new='''\t\tbool special = definition.Legendary || definition.Icon;\n\t\tstring mystery = definition.Icon ? "Unlock this ICON to reveal its requirements and effects." : "Unlock this legendary skill to reveal its requirements and effects.";\n\t\taccess.Set(skill, "description", special ? mystery : definition.Description);\n\t\taccess.Set(skill, "unlockDescription", special ? "" : SkillRequirementPolicy.CatalogRequirement(definition));\n\t\taccess.Set(skill, "actionRequirement", special ? "" : SkillRequirementPolicy.Action(definition));'''
+          if old not in s:
+              raise SystemExit("CatalogPresentation expected block not found")
+          s=s.replace(old,new)
+
+          # The prototype already routes ICON rows through the special presentation
+          # path. Ensure the achievement/details surface also uses resolved text.
+          s=s.replace(
+              'if ((object)customSkillDefinition != null && customSkillDefinition.Legendary)',
+              'if ((object)customSkillDefinition != null && (customSkillDefinition.Legendary || customSkillDefinition.Icon))'
+          )
+          s=s.replace(
+              'm.DisplayText(__instance, "header", "LEGENDARY SKILL");',
+              'm.DisplayText(__instance, "header", customSkillDefinition.Icon ? "ICON SKILL" : "LEGENDARY SKILL");'
+          )
+          s=s.replace(
+              'm.DisplayText(__instance, "description", customSkillDefinition.Name + "\\n" + skillPresentationText.Details);',
+              'm.DisplayText(__instance, "description", customSkillDefinition.Name + "\\n" + skillPresentationText.Details);'
+          )
+          p.write_text(s)
+
+          # Do not expose the catalog requirement through the generic ordinary-skill
+          # requirement helper either.
+          p=Path("src/Main/HoopLandExpanded/SkillRequirementPolicy.cs")
+          s=p.read_text()
+          s=s.replace(
+              'if (!d.Legendary)\n\t\t{\n\t\t\treturn ((d.RawGate == RawSkillGate.None) ? "" : (RatingName(d.RawGate) + " 8.0; ")) + Action(d);\n\t\t}\n\t\treturn "";',
+              'if (d.Legendary || d.Icon)\n\t\t{\n\t\t\treturn "";\n\t\t}\n\t\treturn ((d.RawGate == RawSkillGate.None) ? "" : (RatingName(d.RawGate) + " 8.0; ")) + Action(d);'
+          )
+          s=s.replace(
+              'if (d.Legendary)\n\t\t{\n\t\t\tthrow new ArgumentException("Legendary requirements use the concealment policy.");\n\t\t}',
+              'if (d.Legendary || d.Icon)\n\t\t{\n\t\t\tthrow new ArgumentException("Special skill requirements use the concealment policy.");\n\t\t}'
+          )
+          p.write_text(s)
+
+      - name: Build
+        run: |
+          set -euo pipefail
+          dotnet build src/Main/HoopLandExpanded.csproj -c Release --nologo
+          mkdir -p artifact
+          cp src/Main/bin/Release/net6.0/HoopLandExpanded.dll artifact/
+
+      - name: Verify concealment policy
+        run: |
+          set -euo pipefail
+          mkdir -p verify/IconSmoke
+          cat > verify/IconSmoke/IconSmoke.csproj <<'EOF'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <OutputType>Exe</OutputType>
+              <TargetFramework>net8.0</TargetFramework>
+              <ImplicitUsings>enable</ImplicitUsings>
+              <Nullable>enable</Nullable>
+              <LangVersion>12.0</LangVersion>
+            </PropertyGroup>
+            <ItemGroup>
+              <ProjectReference Include="../../src/Main/HoopLandExpanded.csproj" />
+            </ItemGroup>
+          </Project>
+          EOF
+          cat > verify/IconSmoke/Program.cs <<'EOF'
+          using HoopLandExpanded;
+
+          static void Check(bool value, string name)
+          {
+              if (!value) throw new Exception("FAIL: " + name);
+              Console.WriteLine("PASS: " + name);
+          }
+
+          var icon = CustomSkillCatalog.MarchHero;
+          var locked = SkillPresentationPolicy.Resolve(icon, 0);
+          Check(!locked.Revealed, "locked ICON is not revealed");
+          Check(locked.Label.Contains("ICON"), "locked ICON keeps classification");
+          Check(locked.Effect.Contains("Unlock this ICON"), "locked ICON uses mystery effect");
+          Check(!locked.Effect.Contains("postseason", StringComparison.OrdinalIgnoreCase), "locked effect does not leak mechanics");
+          Check(string.IsNullOrEmpty(locked.Requirement), "locked requirement is hidden");
+          Check(string.IsNullOrEmpty(SkillRequirementPolicy.CatalogRequirement(icon)), "generic catalog requirement hidden");
+
+          var revealed = SkillPresentationPolicy.Resolve(icon, 1);
+          Check(revealed.Revealed, "earned ICON is revealed");
+          Check(revealed.Effect == icon.Description, "earned ICON reveals effect");
+          Check(revealed.Requirement.Contains("national championship", StringComparison.OrdinalIgnoreCase), "earned ICON reveals unlock requirement");
+
+          Check(IconRules.MarchHeroWindow(1, 11, 2, 480, 40, 8), "March Hero effect rule retained");
+          Check(Math.Abs(IconRules.Contest(10f, true) - 8f) < 0.0001f, "March Hero contest effect retained");
+
+          Console.WriteLine("ALL ICON CONCEALMENT TESTS PASSED");
+          EOF
+          dotnet run --project verify/IconSmoke/IconSmoke.csproj -c Release --nologo | tee artifact/icon-concealment-test.txt
+
+          grep -q 'definition.Legendary || definition.Icon' src/Main/HoopLandExpanded/CustomSkills.cs
+          grep -q 'special ? "" : SkillRequirementPolicy.CatalogRequirement' src/Main/HoopLandExpanded/CustomSkills.cs
+          echo "PASS: raw native catalog concealment paths patched" | tee -a artifact/icon-concealment-test.txt
+
+      - name: Record compatibility
+        run: |
+          {
+            echo "March Hero concealment revision"
+            echo "CareerHost unchanged from alpha.3"
+            echo "Checkpoint schema unchanged"
+            echo "Existing alpha.3 HLE careers require no migration"
+            sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.CareerHost.dll
+            sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.Finance.dll
+            sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.Finance.NativeImport.dll
+            sha256sum artifact/HoopLandExpanded.dll
+          } > artifact/compatibility-invariants.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: march-hero-icon-concealed
+          path: artifact
+          retention-days: 1
