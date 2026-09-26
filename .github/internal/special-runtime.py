@@ -190,6 +190,8 @@ runtime=r'''\tprivate bool HandleSpecialEquip(object player, object skillData)
 
 '''
 
+runtime=runtime.replace('\\t','\t')
+
 s=s.replace(anchor,runtime+anchor,1)
 p.write_text(s)
 print("Special-slot runtime equip and reconciliation logic applied.")
