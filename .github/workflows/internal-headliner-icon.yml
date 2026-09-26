@@ -124,19 +124,36 @@ jobs:
 
           string College(int phase, int leaderGames, int leaderPoints)
           {
-              return $$"""
+              var payload = new
               {
-                "leagueType":1,
-                "season":{"currentYear":2026,"startingYear":2026,"playerId":7,"phase":{{phase}}},
-                "teams":[{
-                  "id":10,
-                  "roster":[
-                    {"id":7,"league":1,"stats":[{"yr":2026,"league":1,"season":[{"GP":{{leaderGames}},"PTS":{{leaderPoints}}]}],"awards":[]},
-                    {"id":8,"league":1,"stats":[{"yr":2026,"league":1,"season":[{"GP":30,"PTS":1020}]}],"awards":[]}
-                  ]
-                }]
-              }
-              """;
+                  leagueType = 1,
+                  season = new { currentYear = 2026, startingYear = 2026, playerId = 7, phase },
+                  teams = new[]
+                  {
+                      new
+                      {
+                          id = 10,
+                          roster = new object[]
+                          {
+                              new
+                              {
+                                  id = 7,
+                                  league = 1,
+                                  stats = new[] { new { yr = 2026, league = 1, season = new[] { new { GP = leaderGames, PTS = leaderPoints } } } },
+                                  awards = Array.Empty<object>()
+                              },
+                              new
+                              {
+                                  id = 8,
+                                  league = 1,
+                                  stats = new[] { new { yr = 2026, league = 1, season = new[] { new { GP = 30, PTS = 1020 } } } },
+                                  awards = Array.Empty<object>()
+                              }
+                          }
+                      }
+                  }
+              };
+              return JsonSerializer.Serialize(payload);
           }
 
           using (var save = new NativeSkillSave(Encoding.UTF8.GetBytes(College(11, 20, 800))))
