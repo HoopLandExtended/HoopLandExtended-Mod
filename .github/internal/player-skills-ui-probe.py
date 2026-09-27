@@ -5,12 +5,30 @@ p=root/"CustomSkills.cs"
 s=p.read_text()
 
 # Reuse the existing ListSkills.OnEnable presentation hook so the probe runs after
-# the native screen has finished constructing. No extra native target is needed.
-old='Hook("list-presentation-reset","ListSkills","OnEnable",false,"System.Void",Array.Empty<string>(),prefix:nameof(BeforeSkillListPresentation))'
-new='Hook("list-presentation-reset","ListSkills","OnEnable",false,"System.Void",Array.Empty<string>(),prefix:nameof(BeforeSkillListPresentation),postfix:nameof(AfterPlayerSkillsUiProbe))'
-if s.count(old)!=1:
-    raise SystemExit(f"ListSkills OnEnable probe anchor mismatch: {s.count(old)}")
-s=s.replace(old,new,1)
+# the native screen has finished constructing. Match by semantic tokens rather
+# than recovered-source whitespace.
+lines=s.splitlines(True)
+matches=[i for i,line in enumerate(lines)
+         if 'Hook("list-presentation-reset"' in line
+         and '"ListSkills"' in line and '"OnEnable"' in line
+         and 'BeforeSkillListPresentation' in line]
+if len(matches)!=1:
+    raise SystemExit(f"ListSkills OnEnable probe anchor mismatch: {len(matches)}")
+i=matches[0]
+line=lines[i]
+if 'AfterPlayerSkillsUiProbe' not in line:
+    end='\n' if line.endswith('\n') else ''
+    body=line[:-1] if end else line
+    if body.rstrip().endswith('),'):
+        pos=body.rfind('),')
+        body=body[:pos]+',postfix:nameof(AfterPlayerSkillsUiProbe)),'+body[pos+2:]
+    elif body.rstrip().endswith(')'):
+        pos=body.rfind(')')
+        body=body[:pos]+',postfix:nameof(AfterPlayerSkillsUiProbe))'+body[pos+1:]
+    else:
+        raise SystemExit("ListSkills OnEnable hook line shape unsupported")
+    lines[i]=body+end
+s=''.join(lines)
 
 # Capture the final on-screen row after ordinary/HLE presentation has run. This
 # remains read-only: it records the rendered state but changes no row values.
