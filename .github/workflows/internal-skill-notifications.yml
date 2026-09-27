@@ -3,7 +3,7 @@ name: Internal HLE skill notification prototype
 on:
   push:
     paths:
-      - '.github/workflows/internal-special-slot-source.yml'
+      - '.github/workflows/internal-skill-notifications.yml'
       - '.github/internal/skill-notifications.py'
 
 permissions:
@@ -243,7 +243,10 @@ jobs:
             echo "CareerHost unchanged from public alpha.3"
             echo "Finance assemblies unchanged from public alpha.3"
             echo "HLE checkpoint schema unchanged"
-            echo "No new special-slot save schema"\n            echo "HLE custom progression remains authoritative; native ProgressSkill is replayed only for UI notification on proven rank transitions"\n            echo "Native replay state is restored immediately after notification"\n            echo "Notifications are career-player-only; same-rank XP gains and CPU progression are silent"
+            echo "No new special-slot save schema"
+            echo "HLE custom progression remains authoritative; native ProgressSkill is replayed only for UI notification on proven rank transitions"
+            echo "Native replay state is restored immediately after notification"
+            echo "Notifications are career-player-only; same-rank XP gains and CPU progression are silent"
             sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.CareerHost.dll
             sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.Finance.dll
             sha256sum pkg/HoopLandExtended-0.2.0-alpha.3/payload/HoopLandExpanded.Finance.NativeImport.dll
