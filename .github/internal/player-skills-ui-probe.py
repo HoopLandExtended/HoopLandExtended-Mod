@@ -32,28 +32,29 @@ s=''.join(lines)
 
 # Capture the final on-screen row after ordinary/HLE presentation has run. This
 # remains read-only: it records the rendered state but changes no row values.
-lines=s.splitlines(True)
-matches=[i for i,line in enumerate(lines) if 'private static void SkillRow(' in line]
-if len(matches)!=1:
-    raise SystemExit(f"skill row method anchor mismatch: {len(matches)}")
-start=matches[0]
-end=start
-while end < len(lines) and ';' not in lines[end]:
-    end += 1
-if end >= len(lines):
-    raise SystemExit("skill row method terminator not found")
-block=''.join(lines[start:end+1])
+method_start=s.find('\n\tprivate static void SkillRow(')
+if method_start < 0:
+    method_start=s.find('\tprivate static void SkillRow(')
+if method_start < 0:
+    raise SystemExit("skill row method start not found")
+if s[method_start]=='\n':
+    method_start += 1
+method_end=s.find('\n\tprivate static ',method_start+1)
+if method_end < 0:
+    method_end=s.find('\n\tprivate ',method_start+1)
+if method_end < 0:
+    raise SystemExit("skill row method end not found")
+block=s[method_start:method_end]
 if 'Safe("skill-row"' not in block or '.Present(' not in block:
     raise SystemExit("skill row method shape unsupported")
-replacement='''\tprivate static void SkillRow(object __instance, object __0, object __1, object __2) =>
+new_method='''\tprivate static void SkillRow(object __instance, object __0, object __1, object __2) =>
 \t\tSafe("skill-row", m =>
 \t\t{
 \t\t\tm.Present(__instance, __0, __1, __2);
 \t\t\tm.CapturePlayerSkillsRow(__instance, __0, __1, __2);
 \t\t});
 '''.replace('\\t','\t')
-lines[start:end+1]=[replacement]
-s=''.join(lines)
+s=s[:method_start]+new_method+s[method_end+1:]
 
 # The probe writes its report immediately on screen-open/row-render events, so
 # no lifecycle Flush() modification is necessary.
