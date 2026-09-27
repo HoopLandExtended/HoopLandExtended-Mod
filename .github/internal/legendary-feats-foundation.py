@@ -176,12 +176,6 @@ public sealed partial class CustomSkills
         try { return transform.GetComponent<Button>(); } catch { return null; }
     }
 
-    private static Image? FeatImage(Transform? transform)
-    {
-        if (transform == null) return null;
-        try { return transform.GetComponent<Image>(); } catch { return null; }
-    }
-
     private static string FeatCombinedText(Transform root)
     {
         List<string> values = new();
@@ -221,16 +215,6 @@ public sealed partial class CustomSkills
             string text = FeatCombinedText(t);
             if (text.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0)
                 return button;
-        }
-        return null;
-    }
-
-    private static Image? FeatFirstImage(Transform root)
-    {
-        foreach (Transform t in FeatWalk(root, 4))
-        {
-            Image? image = FeatImage(t);
-            if (image != null) return image;
         }
         return null;
     }
@@ -382,20 +366,7 @@ public sealed partial class CustomSkills
             break;
         }
 
-        bool laidOut = false;
-        try
-        {
-            LayoutGroup? group = parent.GetComponent<LayoutGroup>();
-            if (group != null)
-            {
-                clone.transform.SetSiblingIndex(Math.Min(sourceButton.transform.GetSiblingIndex() + 1, parent.childCount - 1));
-                laidOut = true;
-            }
-        }
-        catch { }
-
-        if (!laidOut)
-            PlaceLegendaryFeatMenuButtonFallback(sourceButton, button);
+        PlaceLegendaryFeatMenuButtonFallback(sourceButton, button);
 
         FeatWireButton(button, new UnityAction(OpenLegendaryFeats));
     }
@@ -517,8 +488,6 @@ public sealed partial class CustomSkills
             if (button != null)
             {
                 button.interactable = isEarned;
-                if (button.targetGraphic == null)
-                    button.targetGraphic = FeatFirstImage(rowObject.transform);
                 string capturedId = feat.Id;
                 FeatWireButton(button, new UnityAction(() => ToggleLegendaryFeat(capturedId)));
             }
