@@ -41,7 +41,13 @@ jobs:
           s=s.replace('<Reference Include="0Harmony" />','<Reference Include="0Harmony"><HintPath>../../refs/bep/BepInEx/core/0Harmony.dll</HintPath></Reference>')
           s=s.replace('<Reference Include="UnityEngine.CoreModule" />','<Reference Include="UnityEngine.CoreModule"><HintPath>../../refs/unity/UnityEngine.CoreModule.dll</HintPath></Reference>')
           if '<Reference Include="UnityEngine.UI"' not in s:
-              s=s.replace('</ItemGroup>','  <Reference Include="UnityEngine.UI"><HintPath>../../refs/unity/UnityEngine.UI.dll</HintPath></Reference>\n  </ItemGroup>',1)
+              import os
+              candidates=list(Path("pkg").rglob("UnityEngine.UI.dll"))+list(Path("refs").rglob("UnityEngine.UI.dll"))
+              print("UnityEngine.UI candidates:", [str(x) for x in candidates])
+              if not candidates:
+                  raise SystemExit("UnityEngine.UI.dll not found in recovered package/reference archives")
+              hint=os.path.relpath(candidates[0], p.parent).replace(os.sep,'/')
+              s=s.replace('</ItemGroup>',f'  <Reference Include="UnityEngine.UI"><HintPath>{hint}</HintPath></Reference>\n  </ItemGroup>',1)
           s=s.replace('<Reference Include="Il2CppInterop.Runtime" />','<Reference Include="Il2CppInterop.Runtime"><HintPath>../../refs/bep/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>')
           s=s.replace('<Reference Include="BepInEx.Core" />','<Reference Include="BepInEx.Core"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Core.dll</HintPath></Reference>')
           s=s.replace('<Reference Include="BepInEx.Unity.IL2CPP" />','<Reference Include="BepInEx.Unity.IL2CPP"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>')
