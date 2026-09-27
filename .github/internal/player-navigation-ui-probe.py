@@ -76,7 +76,7 @@ public sealed partial class CustomSkills
         return score;
     }
 
-    private static object NavPersistentEvents(object? evt)
+    private object NavPersistentEvents(object? evt)
     {
         if (evt == null) return new { Count = -1, Events = Array.Empty<object>() };
         try
