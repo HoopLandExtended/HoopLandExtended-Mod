@@ -4,6 +4,10 @@ root=Path("src/Main/HoopLandExpanded")
 p=root/"CustomSkills.cs"
 s=p.read_text()
 
+if s.count("public sealed class CustomSkills") != 1:
+    raise SystemExit("CustomSkills class declaration anchor mismatch")
+s=s.replace("public sealed class CustomSkills","public sealed partial class CustomSkills",1)
+
 def one(old,new,label):
     global s
     n=s.count(old)
@@ -103,7 +107,9 @@ one(
 
 p.write_text(s)
 
-(root/"SkillNotificationRuntime.cs").write_text(r'''using System.Globalization;
+(root/"SkillNotificationRuntime.cs").write_text(r'''using System;
+using System.Collections.Generic;
+using System.Globalization;
 
 namespace HoopLandExpanded;
 
