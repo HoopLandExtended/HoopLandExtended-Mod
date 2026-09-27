@@ -31,53 +31,6 @@ jobs:
           mkdir -p refs/bep refs/unity
           unzip -q bep.zip -d refs/bep
           unzip -q unity.zip -d refs/unity
-      - name: Build Unity UI compile reference stub
-        run: |
-          set -euo pipefail
-          mkdir -p refs/uistub-src refs/uistub
-          cat > refs/uistub-src/UnityEngine.UI.csproj <<'EOF'
-          <Project Sdk="Microsoft.NET.Sdk">
-            <PropertyGroup>
-              <TargetFramework>net6.0</TargetFramework>
-              <AssemblyName>UnityEngine.UI</AssemblyName>
-              <RootNamespace>UnityEngine.UI</RootNamespace>
-              <Nullable>disable</Nullable>
-            </PropertyGroup>
-            <ItemGroup>
-              <Reference Include="UnityEngine.CoreModule">
-                <HintPath>../unity/UnityEngine.CoreModule.dll</HintPath>
-              </Reference>
-            </ItemGroup>
-          </Project>
-          EOF
-          cat > refs/uistub-src/UiStub.cs <<'EOF'
-          using UnityEngine;
-          using UnityEngine.Events;
-
-          namespace UnityEngine.UI
-          {
-              public class Graphic : Behaviour { }
-
-              public class Text : Graphic
-              {
-                  public string text { get; set; }
-              }
-
-              public class Selectable : MonoBehaviour
-              {
-                  public bool interactable { get; set; }
-              }
-
-              public class Button : Selectable
-              {
-                  public class ButtonClickedEvent : UnityEvent { }
-                  public ButtonClickedEvent onClick { get; set; }
-              }
-          }
-          EOF
-          dotnet build refs/uistub-src/UnityEngine.UI.csproj -c Release --nologo
-          cp refs/uistub-src/bin/Release/net6.0/UnityEngine.UI.dll refs/uistub/UnityEngine.UI.dll
-
       - name: Normalize recovered source
         run: |
           python - <<'PY'
@@ -87,8 +40,6 @@ jobs:
           s=s.replace("<LangVersion>14.0</LangVersion>","<LangVersion>12.0</LangVersion>")
           s=s.replace('<Reference Include="0Harmony" />','<Reference Include="0Harmony"><HintPath>../../refs/bep/BepInEx/core/0Harmony.dll</HintPath></Reference>')
           s=s.replace('<Reference Include="UnityEngine.CoreModule" />','<Reference Include="UnityEngine.CoreModule"><HintPath>../../refs/unity/UnityEngine.CoreModule.dll</HintPath></Reference>')
-          if '<Reference Include="UnityEngine.UI"' not in s:
-              s=s.replace('</ItemGroup>','  <Reference Include="UnityEngine.UI"><HintPath>../../refs/uistub/UnityEngine.UI.dll</HintPath></Reference>\n  </ItemGroup>',1)
           s=s.replace('<Reference Include="Il2CppInterop.Runtime" />','<Reference Include="Il2CppInterop.Runtime"><HintPath>../../refs/bep/BepInEx/core/Il2CppInterop.Runtime.dll</HintPath></Reference>')
           s=s.replace('<Reference Include="BepInEx.Core" />','<Reference Include="BepInEx.Core"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Core.dll</HintPath></Reference>')
           s=s.replace('<Reference Include="BepInEx.Unity.IL2CPP" />','<Reference Include="BepInEx.Unity.IL2CPP"><HintPath>../../refs/bep/BepInEx/core/BepInEx.Unity.IL2CPP.dll</HintPath></Reference>')
