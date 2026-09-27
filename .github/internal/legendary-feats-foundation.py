@@ -129,9 +129,8 @@ public static class LegendaryFeatCatalog
 (root/"LegendaryFeatUi.cs").write_text(r'''using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
-using UnityEngine.Events;
-using UnityEngine.UI;
 using Il2CppInterop.Runtime;
 
 namespace HoopLandExpanded;
@@ -144,10 +143,9 @@ public sealed partial class CustomSkills
     private GameObject? legendaryFeatMenu;
     private GameObject? legendaryFeatRowPrefab;
     private Transform? legendaryFeatListParent;
-    private object? legendaryFeatListController;
     private LegendaryFeatCategory legendaryFeatCategory = LegendaryFeatCategory.College;
     private readonly List<GameObject> legendaryFeatRows = new();
-    private readonly List<UnityAction> legendaryFeatCallbacks = new();
+    private readonly List<object> legendaryFeatCallbacks = new();
     private bool buildingLegendaryFeatUi;
 
     private static IEnumerable<Transform> FeatWalk(Transform root, int maxDepth = 10)
@@ -166,80 +164,111 @@ public sealed partial class CustomSkills
         }
     }
 
-    private static Text? FeatText(Transform? transform)
+    private static string FeatShortTypeName(string typeName)
     {
-        if (transform == null) return null;
-        try { return transform.GetComponent<Text>(); } catch { return null; }
+        int index = typeName.LastIndexOf('.');
+        return index < 0 ? typeName : typeName[(index + 1)..];
     }
 
-    private static Button? FeatButton(Transform? transform)
+    private object? FeatComponent(GameObject gameObject, string typeName)
     {
-        if (transform == null) return null;
-        try { return transform.GetComponent<Button>(); } catch { return null; }
-    }
-
-    private static object? FeatFindComponentByTypeName(GameObject gameObject, string typeName)
-    {
+        string shortName = FeatShortTypeName(typeName);
         try
         {
-            MethodInfo? method = gameObject.GetType().GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                .FirstOrDefault(m => m.Name == "GetComponents"
-                    && !m.IsGenericMethod
-                    && m.GetParameters().Length == 1
-                    && m.GetParameters()[0].ParameterType == typeof(Type));
-            object? result = method?.Invoke(gameObject, new object[] { typeof(Component) });
-            if (result is Array array)
-            {
-                for (int i = 0; i < array.Length; i++)
-                {
-                    object? component = array.GetValue(i);
-                    if (component == null) continue;
-                    Type type = component.GetType();
-                    if (string.Equals(type.Name, typeName, StringComparison.Ordinal)
-                        || string.Equals(type.FullName, typeName, StringComparison.Ordinal))
-                        return component;
-                }
-            }
+            Component? component = gameObject.GetComponent(typeName);
+            if (component != null) return component;
         }
         catch { }
+        if (!string.Equals(shortName, typeName, StringComparison.Ordinal))
+        {
+            try
+            {
+                Component? component = gameObject.GetComponent(shortName);
+                if (component != null) return component;
+            }
+            catch { }
+        }
         return null;
     }
 
-    private static string FeatCombinedText(Transform root)
+    private object? FeatText(Transform? transform) =>
+        transform == null ? null : FeatComponent(transform.gameObject, "UnityEngine.UI.Text");
+
+    private object? FeatButton(Transform? transform) =>
+        transform == null ? null : FeatComponent(transform.gameObject, "UnityEngine.UI.Button");
+
+    private static Transform? FeatTransform(object? component)
+    {
+        if (component is Component unityComponent) return unityComponent.transform;
+        try
+        {
+            PropertyInfo? p = component?.GetType().GetProperty("transform",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            return p?.GetValue(component) as Transform;
+        }
+        catch { return null; }
+    }
+
+    private static GameObject? FeatGameObject(object? component)
+    {
+        if (component is Component unityComponent) return unityComponent.gameObject;
+        try
+        {
+            PropertyInfo? p = component?.GetType().GetProperty("gameObject",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            return p?.GetValue(component) as GameObject;
+        }
+        catch { return null; }
+    }
+
+    private string FeatTextValue(object? text)
+    {
+        if (text == null) return "";
+        try { return access.Text(text, "text"); }
+        catch { return ""; }
+    }
+
+    private void FeatSetText(object? text, string value)
+    {
+        if (text == null) return;
+        try { access.Set(text, "text", value); } catch { }
+    }
+
+    private string FeatCombinedText(Transform root)
     {
         List<string> values = new();
         foreach (Transform t in FeatWalk(root, 5))
         {
-            Text? text = FeatText(t);
-            if (text != null && !string.IsNullOrWhiteSpace(text.text))
-                values.Add(text.text.Trim());
+            object? text = FeatText(t);
+            string value = FeatTextValue(text);
+            if (!string.IsNullOrWhiteSpace(value))
+                values.Add(value.Trim());
         }
         return string.Join(" | ", values);
     }
 
-    private static void FeatSetFirstText(Transform root, string value)
+    private void FeatSetFirstText(Transform root, string value)
     {
         foreach (Transform t in FeatWalk(root, 5))
         {
-            Text? text = FeatText(t);
+            object? text = FeatText(t);
             if (text == null) continue;
-            text.text = value;
+            FeatSetText(text, value);
             return;
         }
     }
 
-    private static void FeatSetTextAt(Transform root, string path, string value)
+    private void FeatSetTextAt(Transform root, string path, string value)
     {
         Transform? t = root.Find(path);
-        Text? text = FeatText(t);
-        if (text != null) text.text = value;
+        if (t != null) FeatSetText(FeatText(t), value);
     }
 
-    private static Button? FeatFindButtonByLabel(Transform root, string token)
+    private object? FeatFindButtonByLabel(Transform root, string token)
     {
         foreach (Transform t in FeatWalk(root, 8))
         {
-            Button? button = FeatButton(t);
+            object? button = FeatButton(t);
             if (button == null) continue;
             string text = FeatCombinedText(t);
             if (text.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0)
@@ -248,12 +277,28 @@ public sealed partial class CustomSkills
         return null;
     }
 
-    private void FeatWireButton(Button button, Action callback)
+    private void FeatWireButton(object button, Action callback)
     {
-        button.onClick.RemoveAllListeners();
-        UnityAction action = DelegateSupport.ConvertDelegate<UnityAction>(callback);
-        legendaryFeatCallbacks.Add(action);
-        button.onClick.AddListener(action);
+        object onClick = access.Need(button, "onClick");
+        try { access.Call(onClick, "RemoveAllListeners"); } catch { }
+
+        MethodInfo? addListener = onClick.GetType().GetMethods(
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+            .Where(m => m.Name == "AddListener" && !m.IsGenericMethod)
+            .SingleOrDefault(m => m.GetParameters().Length == 1);
+        if (addListener == null)
+            throw new MissingMethodException(onClick.GetType().FullName, "AddListener");
+
+        Type nativeDelegateType = addListener.GetParameters()[0].ParameterType;
+        MethodInfo convert = typeof(DelegateSupport).GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Single(m => m.Name == "ConvertDelegate" && m.IsGenericMethodDefinition
+                && m.GetGenericArguments().Length == 1 && m.GetParameters().Length == 1);
+        object converted = convert.MakeGenericMethod(nativeDelegateType)
+            .Invoke(null, new object[] { callback })
+            ?? throw new InvalidOperationException("IL2CPP delegate conversion returned null");
+
+        legendaryFeatCallbacks.Add(converted);
+        addListener.Invoke(onClick, new[] { converted });
     }
 
     private object? CareerFeatPlayer()
@@ -277,6 +322,20 @@ public sealed partial class CustomSkills
         return access.Bool(skill, "equipped") ? "EQUIPPED" : "EARNED";
     }
 
+    private static string RelativeTransformPath(Transform root, Transform target)
+    {
+        List<string> names = new();
+        Transform? current = target;
+        while (current != null && current != root)
+        {
+            names.Add(current.name);
+            current = current.parent;
+        }
+        if (current != root) return "";
+        names.Reverse();
+        return string.Join("/", names);
+    }
+
     private void EnsureLegendaryFeatUi(object listSkills)
     {
         if (buildingLegendaryFeatUi) return;
@@ -289,6 +348,13 @@ public sealed partial class CustomSkills
         if (myPlayer == null || !string.Equals(myPlayer.name, "My Player", StringComparison.Ordinal)) return;
         legendaryFeatMenu = myPlayer.Find("Menu")?.gameObject;
 
+        GameObject? sourceRowPrefab = null;
+        Transform? sourceListParent = null;
+        GameObject? sourceOptions = null;
+        try { sourceRowPrefab = access.Need(listSkills, "listObject") as GameObject; } catch { }
+        try { sourceListParent = access.Need(listSkills, "listParent") as Transform; } catch { }
+        try { sourceOptions = access.Need(listSkills, "skillOptions") as GameObject; } catch { }
+
         if (legendaryFeatScreen == null)
         {
             buildingLegendaryFeatUi = true;
@@ -298,13 +364,19 @@ public sealed partial class CustomSkills
                 legendaryFeatScreen.name = "Legendary Feats";
                 legendaryFeatScreen.SetActive(false);
 
-                object? clonedList = FeatFindComponentByTypeName(legendaryFeatScreen, "ListSkills");
-                if (clonedList != null)
+                legendaryFeatRowPrefab = sourceRowPrefab;
+                if (sourceListParent != null)
                 {
-                    legendaryFeatListController = clonedList;
-                    try { legendaryFeatRowPrefab = access.Need(clonedList, "listObject") as GameObject; } catch { }
-                    try { legendaryFeatListParent = access.Need(clonedList, "listParent") as Transform; } catch { }
-                    try { access.Set(clonedList, "enabled", false); } catch { }
+                    string path = RelativeTransformPath(source.transform, sourceListParent);
+                    if (!string.IsNullOrEmpty(path))
+                        legendaryFeatListParent = legendaryFeatScreen.transform.Find(path);
+                }
+
+                if (sourceOptions != null)
+                {
+                    string path = RelativeTransformPath(source.transform, sourceOptions.transform);
+                    Transform? clonedOptions = string.IsNullOrEmpty(path) ? null : legendaryFeatScreen.transform.Find(path);
+                    if (clonedOptions != null) clonedOptions.gameObject.SetActive(false);
                 }
 
                 ConfigureLegendaryFeatScreen();
@@ -321,7 +393,7 @@ public sealed partial class CustomSkills
 
     private void ConfigureLegendaryFeatScreen()
     {
-        if (legendaryFeatScreen == null || legendaryFeatListController == null) return;
+        if (legendaryFeatScreen == null) return;
         Transform root = legendaryFeatScreen.transform;
 
         FeatSetTextAt(root, "Season Header/Mask/Text 1", "LEGENDARY FEATS");
@@ -339,26 +411,21 @@ public sealed partial class CustomSkills
             if (college != null)
             {
                 FeatSetTextAt(college, "Header", "COLLEGE");
-                Button? b = FeatButton(college.Find("Skill Button"));
-                if (b != null) FeatWireButton(b, () => SelectLegendaryFeatCategory(LegendaryFeatCategory.College));
+                object? b = FeatButton(college.Find("Skill Button"));
+                if (b != null) FeatWireButton(b,
+                    () => SelectLegendaryFeatCategory(LegendaryFeatCategory.College));
             }
             if (pro != null)
             {
                 FeatSetTextAt(pro, "Header", "PRO");
-                Button? b = FeatButton(pro.Find("Skill Button"));
-                if (b != null) FeatWireButton(b, () => SelectLegendaryFeatCategory(LegendaryFeatCategory.Pro));
+                object? b = FeatButton(pro.Find("Skill Button"));
+                if (b != null) FeatWireButton(b,
+                    () => SelectLegendaryFeatCategory(LegendaryFeatCategory.Pro));
             }
             if (creating != null) creating.gameObject.SetActive(false);
             if (defense != null) defense.gameObject.SetActive(false);
             if (points != null) FeatSetTextAt(points, "Header", "EARNED");
         }
-
-        try
-        {
-            GameObject options = (GameObject)access.Need(legendaryFeatListController, "skillOptions");
-            options.SetActive(false);
-        }
-        catch { }
 
         ClearLegendaryFeatRows();
     }
@@ -367,49 +434,46 @@ public sealed partial class CustomSkills
     {
         if (legendaryFeatMenuButton != null || legendaryFeatMenu == null) return;
 
-        Button? sourceButton = FeatFindButtonByLabel(legendaryFeatMenu.transform, "SKILL");
-        if (sourceButton == null)
+        object? sourceButton = FeatFindButtonByLabel(legendaryFeatMenu.transform, "SKILL");
+        Transform? sourceTransform = FeatTransform(sourceButton);
+        GameObject? sourceGameObject = FeatGameObject(sourceButton);
+        if (sourceButton == null || sourceTransform == null || sourceGameObject == null)
         {
-            Event("legendary-feats-ui-menu-missing", new { Reason = "player-skills-button-not-found" });
+            Event("legendary-feats-ui-menu-missing",
+                new { Reason = "player-skills-button-not-found" });
             return;
         }
 
-        Transform parent = sourceButton.transform.parent;
-        GameObject clone = UnityEngine.Object.Instantiate(sourceButton.gameObject, parent);
+        Transform parent = sourceTransform.parent;
+        GameObject clone = UnityEngine.Object.Instantiate(sourceGameObject, parent);
         clone.name = "Legendary Feats Button";
         legendaryFeatMenuButton = clone;
 
-        Button? button = clone.GetComponent<Button>();
+        object? button = FeatButton(clone.transform);
         if (button == null)
         {
-            Event("legendary-feats-ui-menu-missing", new { Reason = "cloned-button-component-not-found" });
+            Event("legendary-feats-ui-menu-missing",
+                new { Reason = "cloned-button-component-not-found" });
             UnityEngine.Object.Destroy(clone);
             legendaryFeatMenuButton = null;
             return;
         }
 
-        foreach (Transform t in FeatWalk(clone.transform, 5))
-        {
-            Text? text = FeatText(t);
-            if (text == null) continue;
-            if (string.IsNullOrWhiteSpace(text.text)) continue;
-            text.text = "LEGENDARY FEATS";
-            break;
-        }
-
+        FeatSetFirstText(clone.transform, "LEGENDARY FEATS");
         PlaceLegendaryFeatMenuButtonFallback(sourceButton, button);
-
         FeatWireButton(button, OpenLegendaryFeats);
     }
 
-    private void PlaceLegendaryFeatMenuButtonFallback(Button sourceButton, Button clonedButton)
+    private void PlaceLegendaryFeatMenuButtonFallback(object sourceButton, object clonedButton)
     {
-        RectTransform? sourceRect = sourceButton.transform as RectTransform;
-        RectTransform? cloneRect = clonedButton.transform as RectTransform;
+        Transform? sourceTransform = FeatTransform(sourceButton);
+        Transform? cloneTransform = FeatTransform(clonedButton);
+        RectTransform? sourceRect = sourceTransform as RectTransform;
+        RectTransform? cloneRect = cloneTransform as RectTransform;
         if (sourceRect == null || cloneRect == null) return;
 
         List<RectTransform> siblings = new();
-        Transform parent = sourceButton.transform.parent;
+        Transform parent = sourceRect.parent;
         for (int i = 0; i < parent.childCount; i++)
         {
             Transform child = parent.GetChild(i);
@@ -445,7 +509,8 @@ public sealed partial class CustomSkills
         if (legendaryFeatSourceScreen != null) legendaryFeatSourceScreen.SetActive(false);
         legendaryFeatScreen.SetActive(true);
         RefreshLegendaryFeatScreen();
-        Event("legendary-feats-ui-opened", new { Category = legendaryFeatCategory.ToString() });
+        Event("legendary-feats-ui-opened",
+            new { Category = legendaryFeatCategory.ToString() });
     }
 
     private void SelectLegendaryFeatCategory(LegendaryFeatCategory category)
@@ -472,14 +537,14 @@ public sealed partial class CustomSkills
 
     private void RefreshLegendaryFeatScreen()
     {
-        if (legendaryFeatScreen == null || legendaryFeatRowPrefab == null || legendaryFeatListParent == null) return;
+        if (legendaryFeatScreen == null || legendaryFeatRowPrefab == null
+            || legendaryFeatListParent == null) return;
         object? player = CareerFeatPlayer();
         if (player == null) return;
 
         ClearLegendaryFeatRows();
 
         int earned = 0;
-        int equipped = 0;
         foreach (LegendaryFeatDefinition feat in LegendaryFeatCatalog.InCategory(legendaryFeatCategory))
         {
             CustomSkillDefinition? definition = CustomSkillCatalog.Find(feat.Id);
@@ -489,20 +554,26 @@ public sealed partial class CustomSkills
             bool isEarned = skill != null && access.Int(skill, "level") > 0;
             bool isEquipped = isEarned && access.Bool(skill!, "equipped");
             if (isEarned) earned++;
-            if (isEquipped) equipped++;
 
-            GameObject rowObject = UnityEngine.Object.Instantiate(legendaryFeatRowPrefab, legendaryFeatListParent);
+            GameObject rowObject = UnityEngine.Object.Instantiate(
+                legendaryFeatRowPrefab, legendaryFeatListParent);
             rowObject.name = "Legendary Feat - " + feat.Id;
             rowObject.SetActive(true);
             legendaryFeatRows.Add(rowObject);
 
-            object? row = FeatFindComponentByTypeName(rowObject, "SkillsObject");
-            if (row == null) continue;
+            object? row = FeatComponent(rowObject, "SkillsObject");
+            if (row == null)
+            {
+                Event("legendary-feats-ui-row-missing",
+                    new { Id = feat.Id, Reason = "SkillsObject-component-not-found" });
+                continue;
+            }
 
             SkillPresentationText text = TextFor(player, definition);
             DisplayText(row, "skillName", feat.Name);
             DisplayText(row, "level", FeatStateLabel(skill, access));
-            DisplayText(row, "description", text.Revealed ? text.Effect : "Complete the feat to reveal its effect.");
+            DisplayText(row, "description",
+                text.Revealed ? text.Effect : "Complete the feat to reveal its effect.");
             DisplayText(row, "status", text.Revealed
                 ? ((isEquipped ? "EQUIPPED" : "EARNED") + "\n" + text.Requirement)
                 : "LOCKED");
@@ -515,10 +586,10 @@ public sealed partial class CustomSkills
             }
             catch { }
 
-            Button? button = rowObject.GetComponent<Button>();
+            object? button = FeatButton(rowObject.transform);
             if (button != null)
             {
-                button.interactable = isEarned;
+                try { access.Set(button, "interactable", isEarned); } catch { }
                 string capturedId = feat.Id;
                 FeatWireButton(button, () => ToggleLegendaryFeat(capturedId));
             }
@@ -528,8 +599,10 @@ public sealed partial class CustomSkills
         Transform? categories = root.Find("Panel/Categories");
         if (categories != null)
         {
-            UpdateLegendaryFeatTab(categories.Find("Finishing"), LegendaryFeatCategory.College, player);
-            UpdateLegendaryFeatTab(categories.Find("Shooting"), LegendaryFeatCategory.Pro, player);
+            UpdateLegendaryFeatTab(categories.Find("Finishing"),
+                LegendaryFeatCategory.College, player);
+            UpdateLegendaryFeatTab(categories.Find("Shooting"),
+                LegendaryFeatCategory.Pro, player);
             Transform? points = categories.Find("Points");
             if (points != null) FeatSetTextAt(points, "Value", earned.ToString());
         }
@@ -537,19 +610,21 @@ public sealed partial class CustomSkills
         WriteLegendaryFeatUiStatus("refreshed");
     }
 
-    private void UpdateLegendaryFeatTab(Transform? categoryRoot, LegendaryFeatCategory category, object player)
+    private void UpdateLegendaryFeatTab(
+        Transform? categoryRoot, LegendaryFeatCategory category, object player)
     {
         if (categoryRoot == null) return;
         int equipped = 0;
         foreach (LegendaryFeatDefinition feat in LegendaryFeatCatalog.InCategory(category))
         {
             object? skill = SkillXp(player, feat.Id);
-            if (skill != null && access.Int(skill, "level") > 0 && access.Bool(skill, "equipped"))
+            if (skill != null && access.Int(skill, "level") > 0
+                && access.Bool(skill, "equipped"))
                 equipped++;
         }
         Transform? textTransform = categoryRoot.Find("Skill Button/Text");
-        Text? text = FeatText(textTransform);
-        if (text != null) text.text = equipped + "/1";
+        if (textTransform != null)
+            FeatSetText(FeatText(textTransform), equipped + "/1");
     }
 
     private void ToggleLegendaryFeat(string id)
@@ -601,8 +676,10 @@ public sealed partial class CustomSkills
                 SourceScreen = legendaryFeatSourceScreen?.name ?? "",
                 Menu = legendaryFeatMenu?.name ?? "",
                 Category = legendaryFeatCategory.ToString(),
-                CollegeCount = LegendaryFeatCatalog.InCategory(LegendaryFeatCategory.College).Count(),
-                ProCount = LegendaryFeatCatalog.InCategory(LegendaryFeatCategory.Pro).Count(),
+                CollegeCount = LegendaryFeatCatalog
+                    .InCategory(LegendaryFeatCategory.College).Count(),
+                ProCount = LegendaryFeatCatalog
+                    .InCategory(LegendaryFeatCategory.Pro).Count(),
                 Storage = "native SkillXP compatibility backend",
                 SaveSchemaChanged = false
             });
