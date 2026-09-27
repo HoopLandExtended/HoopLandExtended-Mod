@@ -134,9 +134,9 @@ jobs:
         run: |
           set -euo pipefail
           curl -L --fail -o special-costs.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/62636ebd3ce50a6200e14b80d596f04578ad5490/.github/internal/special-costs.py"
-          curl -L --fail -o special-hooks.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/8441737ea54c378ec7d6bc2758b74b3d18a86e1c/.github/internal/special-hooks.py"
-          curl -L --fail -o special-runtime.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/fca7f382837b133db490676b8ac07151d6431ef6/.github/internal/special-runtime.py"
-          curl -L --fail -o special-ui.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/35100c1fb63f9829ba1462e18c99f57e462cfddb/.github/internal/special-ui.py"
+          curl -L --fail -o special-hooks.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/5e0b9e7b77d91390342c5f784dbd841e48493fc3/.github/internal/special-hooks.py"
+          curl -L --fail -o special-runtime.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/5e0b9e7b77d91390342c5f784dbd841e48493fc3/.github/internal/special-runtime.py"
+          curl -L --fail -o special-ui.py "https://raw.githubusercontent.com/HoopLandExtended/HoopLandExtended-Mod/5e0b9e7b77d91390342c5f784dbd841e48493fc3/.github/internal/special-ui.py"
           python special-costs.py
           python special-hooks.py
           python special-runtime.py
