@@ -1,0 +1,49 @@
+name: Internal inspect native upgrades navigation
+
+on:
+  push:
+    paths:
+      - '.github/workflows/internal-inspect-upgrades-nav.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '8.0.x'
+      - name: Install ILSpy
+        run: dotnet tool install ilspycmd --tool-path .tools
+      - name: Download alpha3 package
+        run: |
+          set -euo pipefail
+          curl -L --fail -o hle.zip "https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/download/v0.2.0-alpha.3/HoopLandExtended-0.2.0-alpha.3-win-x64.zip"
+          unzip -q hle.zip -d pkg
+          echo "=== DLL INVENTORY ==="
+          find pkg -type f -iname '*.dll' | sort
+      - name: Decompile game references
+        run: |
+          set -euo pipefail
+          mkdir -p game-src
+          mapfile -t candidates < <(find pkg -type f \( -iname 'Assembly-CSharp.dll' -o -iname '*Hoop*Land*.dll' \) | sort)
+          echo "Candidates: ${#candidates[@]}"
+          printf '%s\n' "${candidates[@]}"
+          for dll in "${candidates[@]}"; do
+            out="game-src/$(basename "${dll%.dll}")"
+            mkdir -p "$out"
+            echo "=== DECOMPILING $dll ==="
+            ./.tools/ilspycmd -p -o "$out" "$dll" || true
+          done
+      - name: Search upgrade and skill navigation
+        run: |
+          set -euo pipefail
+          echo "=== FILES WITH LISTSKILLS / PLAYER SKILLS / SKILL BUTTON ==="
+          grep -RniE 'ListSkills|Player Skills|Player Upgrades|Skill Button|skillOptions|CategoryPressed|EquipSkill' game-src | head -n 1000 || true
+          echo "=== POSSIBLE UPGRADE CLASSES ==="
+          grep -RliE 'class .*Upgrade|ListUpgrade|PlayerUpgrade|UpgradePlayer|UnlockPlayerSkills' game-src | head -n 200 || true
+          echo "=== METHODS REFERENCING SKILL SCREEN ==="
+          grep -RniE 'SetActive\(.*skill|skills.*SetActive|skill.*SetActive|playerSkills|PlayerSkills|listSkills' game-src | head -n 1000 || true
