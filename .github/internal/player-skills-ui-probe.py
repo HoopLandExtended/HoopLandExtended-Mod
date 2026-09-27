@@ -55,18 +55,8 @@ replacement='''\tprivate static void SkillRow(object __instance, object __0, obj
 lines[start:end+1]=[replacement]
 s=''.join(lines)
 
-# Make normal flush/stop boundaries persist whatever the player browsed.
-lines=s.splitlines(True)
-matches=[i for i,line in enumerate(lines) if 'public void Flush()' in line and 'diagnostics.SkillJournal.Flush()' in line]
-if len(matches)!=1:
-    raise SystemExit(f"flush probe anchor mismatch: {len(matches)}")
-i=matches[0]
-if 'FlushPlayerSkillsUiProbe()' not in lines[i]:
-    brace=lines[i].find('{')
-    if brace < 0:
-        raise SystemExit("flush method shape unsupported")
-    lines[i]=lines[i][:brace+1]+' FlushPlayerSkillsUiProbe();'+lines[i][brace+1:]
-s=''.join(lines)
+# The probe writes its report immediately on screen-open/row-render events, so
+# no lifecycle Flush() modification is necessary.
 
 # Reset only the process-local probe capture when switching careers/branches.
 lines=s.splitlines(True)
