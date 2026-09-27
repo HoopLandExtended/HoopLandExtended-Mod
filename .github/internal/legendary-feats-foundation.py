@@ -193,8 +193,24 @@ public sealed partial class CustomSkills
         {
             try
             {
-                Component? component = gameObject.GetComponent(Il2CppType.From(wrapper));
-                if (component != null) return component;
+                MethodInfo? from = typeof(Il2CppType).GetMethods(
+                        BindingFlags.Public | BindingFlags.Static)
+                    .FirstOrDefault(m => m.Name == "From"
+                        && m.GetParameters().Length >= 1
+                        && m.GetParameters()[0].ParameterType == typeof(Type));
+                object? nativeType = from?.Invoke(null, new object?[] { wrapper });
+                if (nativeType != null)
+                {
+                    MethodInfo? getComponent = gameObject.GetType().GetMethods(
+                            BindingFlags.Public | BindingFlags.Instance)
+                        .FirstOrDefault(m => m.Name == "GetComponent"
+                            && !m.IsGenericMethod
+                            && m.GetParameters().Length == 1
+                            && (m.GetParameters()[0].ParameterType.FullName ?? "")
+                                .Contains("Il2CppSystem.Type", StringComparison.Ordinal));
+                    object? component = getComponent?.Invoke(gameObject, new[] { nativeType });
+                    if (component != null) return component;
+                }
             }
             catch { }
         }
