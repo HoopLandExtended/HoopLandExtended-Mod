@@ -32,44 +32,58 @@ s=''.join(lines)
 
 # Capture the final on-screen row after ordinary/HLE presentation has run. This
 # remains read-only: it records the rendered state but changes no row values.
-old='''\tprivate static void SkillRow(object __instance, object __0, object __1, object __2) =>
-\t\tSafe("skill-row", m => m.Present(__instance, __0, __1, __2));
-'''
-new='''\tprivate static void SkillRow(object __instance, object __0, object __1, object __2) =>
+lines=s.splitlines(True)
+matches=[i for i,line in enumerate(lines) if 'private static void SkillRow(' in line]
+if len(matches)!=1:
+    raise SystemExit(f"skill row method anchor mismatch: {len(matches)}")
+start=matches[0]
+end=start
+while end < len(lines) and ';' not in lines[end]:
+    end += 1
+if end >= len(lines):
+    raise SystemExit("skill row method terminator not found")
+block=''.join(lines[start:end+1])
+if 'Safe("skill-row"' not in block or '.Present(' not in block:
+    raise SystemExit("skill row method shape unsupported")
+replacement='''\tprivate static void SkillRow(object __instance, object __0, object __1, object __2) =>
 \t\tSafe("skill-row", m =>
 \t\t{
 \t\t\tm.Present(__instance, __0, __1, __2);
 \t\t\tm.CapturePlayerSkillsRow(__instance, __0, __1, __2);
 \t\t});
-'''
-old=old.replace('\\t','\t')
-new=new.replace('\\t','\t')
-if s.count(old)!=1:
-    raise SystemExit(f"skill row probe anchor mismatch: {s.count(old)}")
-s=s.replace(old,new,1)
+'''.replace('\\t','\t')
+lines[start:end+1]=[replacement]
+s=''.join(lines)
 
 # Make normal flush/stop boundaries persist whatever the player browsed.
-old='public void Flush() { Status(); icons?.Flush(); passes?.Flush(); diagnostics.SkillJournal.Flush(); }'
-new='public void Flush() { FlushPlayerSkillsUiProbe(); Status(); icons?.Flush(); passes?.Flush(); diagnostics.SkillJournal.Flush(); }'
-if s.count(old)!=1:
-    raise SystemExit(f"flush probe anchor mismatch: {s.count(old)}")
-s=s.replace(old,new,1)
+lines=s.splitlines(True)
+matches=[i for i,line in enumerate(lines) if 'public void Flush()' in line and 'diagnostics.SkillJournal.Flush()' in line]
+if len(matches)!=1:
+    raise SystemExit(f"flush probe anchor mismatch: {len(matches)}")
+i=matches[0]
+if 'FlushPlayerSkillsUiProbe()' not in lines[i]:
+    brace=lines[i].find('{')
+    if brace < 0:
+        raise SystemExit("flush method shape unsupported")
+    lines[i]=lines[i][:brace+1]+' FlushPlayerSkillsUiProbe();'+lines[i][brace+1:]
+s=''.join(lines)
 
 # Reset only the process-local probe capture when switching careers/branches.
-old='''\tprivate static void ResetCareer()
-\t{
-\t\tinstance?.ResetSkillNotifications();
-'''
-new='''\tprivate static void ResetCareer()
-\t{
-\t\tinstance?.ResetPlayerSkillsUiProbe();
-\t\tinstance?.ResetSkillNotifications();
-'''
-old=old.replace('\\t','\t')
-new=new.replace('\\t','\t')
-if s.count(old)!=1:
-    raise SystemExit(f"career probe reset anchor mismatch: {s.count(old)}")
-s=s.replace(old,new,1)
+lines=s.splitlines(True)
+matches=[i for i,line in enumerate(lines) if 'private static void ResetCareer()' in line]
+if len(matches)!=1:
+    raise SystemExit(f"career probe reset anchor mismatch: {len(matches)}")
+i=matches[0]
+insert=i+1
+while insert < len(lines) and '{' not in lines[insert]:
+    insert += 1
+if insert >= len(lines):
+    raise SystemExit("ResetCareer opening brace not found")
+near=''.join(lines[insert+1:min(len(lines),insert+6)])
+if 'ResetPlayerSkillsUiProbe' not in near:
+    indent='\t\t'
+    lines.insert(insert+1,indent+'instance?.ResetPlayerSkillsUiProbe();\n')
+s=''.join(lines)
 
 p.write_text(s)
 
