@@ -176,6 +176,23 @@ public sealed partial class CustomSkills
         try { return transform.GetComponent<Button>(); } catch { return null; }
     }
 
+    private static object? FeatFindComponentByTypeName(GameObject gameObject, string typeName)
+    {
+        try
+        {
+            foreach (Component component in gameObject.GetComponents<Component>())
+            {
+                if (component == null) continue;
+                Type type = component.GetType();
+                if (string.Equals(type.Name, typeName, StringComparison.Ordinal)
+                    || string.Equals(type.FullName, typeName, StringComparison.Ordinal))
+                    return component;
+            }
+        }
+        catch { }
+        return null;
+    }
+
     private static string FeatCombinedText(Transform root)
     {
         List<string> values = new();
@@ -267,13 +284,13 @@ public sealed partial class CustomSkills
                 legendaryFeatScreen.name = "Legendary Feats";
                 legendaryFeatScreen.SetActive(false);
 
-                ListSkills? clonedList = legendaryFeatScreen.GetComponent<ListSkills>();
+                object? clonedList = FeatFindComponentByTypeName(legendaryFeatScreen, "ListSkills");
                 if (clonedList != null)
                 {
                     legendaryFeatListController = clonedList;
-                    try { legendaryFeatRowPrefab = clonedList.listObject; } catch { }
-                    try { legendaryFeatListParent = clonedList.listParent; } catch { }
-                    clonedList.enabled = false;
+                    try { legendaryFeatRowPrefab = access.Need(clonedList, "listObject") as GameObject; } catch { }
+                    try { legendaryFeatListParent = access.Need(clonedList, "listParent") as Transform; } catch { }
+                    try { access.Set(clonedList, "enabled", false); } catch { }
                 }
 
                 ConfigureLegendaryFeatScreen();
@@ -465,20 +482,24 @@ public sealed partial class CustomSkills
             rowObject.SetActive(true);
             legendaryFeatRows.Add(rowObject);
 
-            SkillsObject? row = rowObject.GetComponent<SkillsObject>();
+            object? row = FeatFindComponentByTypeName(rowObject, "SkillsObject");
             if (row == null) continue;
 
             SkillPresentationText text = TextFor(player, definition);
-            row.skillName.text = feat.Name;
-            row.level.text = FeatStateLabel(skill, access);
-            row.description.text = text.Revealed ? text.Effect : "Complete the feat to reveal its effect.";
-            row.status.text = text.Revealed
+            DisplayText(row, "skillName", feat.Name);
+            DisplayText(row, "level", FeatStateLabel(skill, access));
+            DisplayText(row, "description", text.Revealed ? text.Effect : "Complete the feat to reveal its effect.");
+            DisplayText(row, "status", text.Revealed
                 ? ((isEquipped ? "EQUIPPED" : "EARNED") + "\n" + text.Requirement)
-                : "LOCKED";
-
-            row.starRating.gameObject.SetActive(false);
-            if (row.progress != null && row.progress.parent != null)
-                row.progress.parent.gameObject.SetActive(false);
+                : "LOCKED");
+            try { DisplayActive(row, access.Need(row, "starRating"), false); } catch { }
+            try
+            {
+                object progress = access.Need(row, "progress");
+                object parent = access.Need(progress, "parent");
+                DisplayActive(row, parent, false);
+            }
+            catch { }
 
             Button? button = rowObject.GetComponent<Button>();
             if (button == null)
