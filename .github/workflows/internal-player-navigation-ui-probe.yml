@@ -241,7 +241,7 @@ jobs:
           grep -q 'Hierarchy = UiHierarchy' src/Main/HoopLandExpanded/PlayerSkillsUiProbe.cs
           grep -q 'CapturePlayerNavigationUi' src/Main/HoopLandExpanded/PlayerNavigationUiProbe.cs
           grep -q 'player-navigation-ui-probe.json' src/Main/HoopLandExpanded/PlayerNavigationUiProbe.cs
-          grep -q 'Resources.FindObjectsOfTypeAll<GameObject>' src/Main/HoopLandExpanded/PlayerNavigationUiProbe.cs
+          grep -q 'SceneManager.sceneCount' src/Main/HoopLandExpanded/PlayerNavigationUiProbe.cs\n          grep -q 'GetRootGameObjects' src/Main/HoopLandExpanded/PlayerNavigationUiProbe.cs
           grep -q '\$diagExts' artifact/scripts/Collect.ps1
           grep -q '26214400' artifact/scripts/Collect.ps1
           {
