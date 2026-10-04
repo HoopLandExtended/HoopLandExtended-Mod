@@ -5,8 +5,8 @@
 Standalone release candidate for the expanded HLE gameplay package.
 
 ### Added
-- Dedicated College ICON and Professional Legendary Ability interfaces.
-- One equipped ICON/Legendary Ability slot, separate from ordinary skill-point spending and mastery.
+- Dedicated Legendary Abilities interface with College and Pro categories.
+- One equipped Legendary Ability per category, separate from ordinary skill-point spending and mastery.
 - Accepted custom skill icons and presentation refinements.
 - College-to-professional continuity for HLE skill progress and earned/equipped abilities.
 - A separate opt-in profiling launcher while normal play runs without profiling overhead.

@@ -10,8 +10,8 @@
 ## What HLE currently adds
 
 - Expanded custom skills, skill progression, and accepted custom skill icons
-- Dedicated College ICON and Professional Legendary Ability interfaces
-- One equipped ICON/Legendary Ability slot, separate from ordinary skill-point spending
+- Dedicated Legendary Abilities interface with College and Pro categories
+- One equipped Legendary Ability per category, separate from ordinary skill-point spending
 - College-to-professional continuity for HLE skill progress and earned/equipped abilities
 - Expanded social-media personalities, accounts, and community feed
 - Normalized professional fan progression for played career games
@@ -23,7 +23,7 @@
 
 v0.2.0-alpha.4-rc.1 packages HLE as a standalone release candidate that creates and maintains its own separate Hoop Land game copy. It does not overwrite the Steam installation or a development installation.
 
-This release candidate adds the ICON and Legendary Ability interfaces, custom icons, college-to-professional continuity, and live-game performance improvements. It also removes HLE's former NBA-entry attribute deduction so native Hoop Land draft regression is the sole authority.
+This release candidate adds the Legendary Abilities interface with College and Pro categories, custom icons, college-to-professional continuity, and live-game performance improvements. It also removes HLE's former NBA-entry attribute deduction so native Hoop Land draft regression is the sole authority.
 
 Professional fan gains from played career games now use the normalized HLE calculation at supported game lengths, including full 48-minute games. The live-controller direction fix derives attacking direction from home/road assignment and Hoop Land's halftime side-switch flag, eliminating the unavailable-team and missing-direction exception storms found during RC testing.
 
@@ -54,7 +54,7 @@ Extract this RC over a clean alpha.3 package folder that still contains its matc
 SHA-256:
 
 ```text
-cb2f7c6104e0182d98e8effe646ab90e89629dc17c306cb90ab50e2e1aaf466a
+6b5b4ec2db4f28304410646ea2cf2d062799de5044e4069d80e46ac24ea370dc
 ```
 
 for:
