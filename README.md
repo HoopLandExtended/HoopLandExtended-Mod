@@ -1,84 +1,100 @@
-# Hoop Land Extended
+# Hoop Land Extended (HLE)
 
-**Hoop Land Extended (HLE)** is an unofficial gameplay expansion for the Windows/Steam version of **Hoop Land**.
+Hoop Land Extended expands Hoop Land career play with custom skills and legendary abilities, professional finances, front-office management, fan progression, and social features.
 
-> **Current release:** v0.2.0-alpha.4-rc.1  
-> **Status:** Experimental release candidate  
-> **Platform:** Windows x64 / Steam  
-> **Career support:** New HLE careers and existing alpha.3 HLE careers; existing non-HLE careers are not automatically adopted
+**Current release: 0.4.0-alpha.1 · Windows x64 · Steam**
 
-## What HLE currently adds
+Download `HLE-0.4.0-alpha.1.zip` from this repository's **Releases** page. Use **HLE.exe** to install, configure, update, and play.
 
-- Expanded custom skills, skill progression, and accepted custom skill icons
-- Dedicated Legendary Abilities interface with College and Pro categories
-- One equipped Legendary Ability per category, separate from ordinary skill-point spending
-- College-to-professional continuity for HLE skill progress and earned/equipped abilities
-- Expanded social-media personalities, accounts, and community feed
-- Normalized professional fan progression for played career games
-- Automatic HLE enrollment for new careers and persistent HLE career state
-- Branch-aware continuation for restored, copied, rerolled, or manually edited HLE careers
-- Separate setup, normal/profiling play, loader-bypassed play, report collection, and removal helpers
+## Features
 
-## Alpha.4 RC1 highlights
+### Choose your modules
 
-v0.2.0-alpha.4-rc.1 packages HLE as a standalone release candidate that creates and maintains its own separate Hoop Land game copy. It does not overwrite the Steam installation or a development installation.
+Enable **Skills and Legendary Abilities**, **Finance**, **Fans**, and **Social** independently from the launcher. All four are enabled by default.
 
-This release candidate adds the Legendary Abilities interface with College and Pro categories, custom icons, college-to-professional continuity, and live-game performance improvements. It also removes HLE's former NBA-entry attribute deduction so native Hoop Land draft regression is the sole authority.
+- **Skills and Legendary Abilities:** Additional career progression and ability options. Disabling the module preserves your HLE progress and loadout and releases its SP costs until you enable it again.
+- **Finance:** Contracts, salary-cap accounting, team finances, front-office decisions, and facility maintenance.
+- **Fans:** Fan progression for your career.
+- **Social:** Social features surrounding your career and league activity.
 
-Professional fan gains from played career games now use the normalized HLE calculation at supported game lengths, including full 48-minute games. The live-controller direction fix derives attacking direction from home/road assignment and Hoop Land's halftime side-switch flag, eliminating the unavailable-team and missing-direction exception storms found during RC testing.
+### Professional finances
 
-## Not in this release
+HLE tracks contracts, guarantees, options, cap room, exceptions, dead salary, and luxury tax. Personal coins and team funds have separate balances, with career earnings and team game income supporting their respective wallets.
 
-The planned soft-cap, HLE contract-generation, CPU roster-management, and trade overhaul are **not enabled**. Hoop Land's native finance and transaction behavior remains authoritative.
+Salary-cap room and the mid-level exception (MLE) are salary accounting, rather than spendable coins. They are alternative signing routes and cannot be added together as one budget. Facility maintenance and assessed tax bills use team coins.
 
-Simulated career-player fan rewards have not been validated for this release candidate and may still use native behavior. Existing careers that were never enrolled in HLE are not automatically adopted.
+### Front-office management
+
+With Finance enabled, choose how much control you want over your employer's roster:
+
+| Mode | Your employer | Other teams |
+| --- | --- | --- |
+| **Automatic** | HLE manages roster moves automatically. | HLE manages roster moves automatically. |
+| **Player control** | You manage the front office and approve incoming HLE trade offers. | HLE manages roster moves automatically. |
+| **Recommendations** | HLE proposes contracts, extensions, and trades for your approval. | HLE manages roster moves automatically. |
+
+Your career player's own contracts, options, and trade consent remain personal choices. Expired-contract cleanup happens automatically on HLE-managed rosters.
+
+HLE considers your **trade targets**, **trade block**, and **untouchables**. Untouchable players are excluded from HLE trade packages. Trade evaluations consider more than potential stars, including current contribution, development, fit, and contracts. A requested target can carry an estimated value premium of up to 10%, disclosed before approval.
+
+Open **HLE DECISIONS** from the career menu to review proposals. Trade offers list all incoming and outgoing players and draft picks, along with estimated values and any premium. Choose **Approve**, **Reject**, or **Close** to leave a proposal pending. Proposals expire after five days or when relevant circumstances change; leaving one unanswered does not approve it.
+
+Trades require both teams' agreement and eligibility. Completed trades appear in the game's news, message board, and social feed. Trade availability depends on the league's rosters and finances; an offer is not guaranteed every day.
+
+### Facilities
+
+Purchased facility tiers at your career employer are permanent. Facility condition falls by one point per twenty completed professional calendar days. **Maintain All** restores condition using team coins; maintenance is not charged automatically.
+
+## Requirements
+
+- Windows x64.
+- Your own supported Steam installation of Hoop Land.
+- An internet connection for first-time setup downloads.
+- A writable folder for HLE and its separate game copy.
+
+The launcher checks game compatibility before installation. First setup and the first launch can take several minutes. The release does not include Hoop Land game files or career saves.
 
 ## Installation
 
-1. Download **`HoopLandExtended-0.2.0-alpha.4-rc.1-win-x64.zip`** from the Releases page.
-2. Extract it into its own new writable folder. Do **not** extract it into the Steam Hoop Land folder or an HLE development installation.
-3. Close Hoop Land completely.
-4. Run `1-SETUP.cmd`.
-5. Run `2-PLAY-HLE.cmd` for normal play.
+1. Close Hoop Land and any HLE launcher.
+2. Download and extract the entire release ZIP. It contains one **`HLE-0.4.0-alpha.1`** folder with all required files.
+3. Keep **HLE.exe** together with its accompanying files and open it.
+4. Select your original Steam Hoop Land folder, choose your modules, and start setup. HLE creates a separate modded game copy inside the release folder.
+5. Select **Play HLE**.
 
-Setup verifies the supported Steam game build, creates a separate game copy, downloads pinned dependencies, compiles the RC runtime with warnings treated as errors, and runs its managed verification suite before installation. Your Steam installation is not modified.
+The default front-office mode is **Automatic**. Change it in the launcher settings before playing if you want **Player control** or **Recommendations**.
 
-For complete instructions, read `0-START-HERE.txt` inside the release ZIP.
+## Updating
 
-### Upgrading from alpha.3
+1. Close the game and launcher.
+2. Extract the new release ZIP.
+3. Copy the **contents** of its release folder into your existing HLE package folder, replacing package files. Preserve the existing **`Game`** folder and **`installed.json`**. Do not place the new release folder inside the old one.
+4. Open **HLE.exe** in your existing folder and select **Update HLE**.
 
-Extract this RC over a clean alpha.3 package folder that still contains its matching `installed.json` receipt, then run `1-SETUP.cmd`. Setup verifies the prior installation, updates the separate game copy, and preserves saves and HLE career state. Keep an untouched alpha.3 archive as your rollback copy.
+Settings and HLE career state are retained when updating in place.
 
-## Verify your download
+If you set up a separate new package folder instead, close the game and use **Tools → Import previous HLE state**, selecting the old package's **`Game`** folder. Back up your native career save and matching HLE state before moving a career. Separate game copies share the game's normal save slots.
 
-SHA-256:
+Existing native careers without HLE financial state are not automatically enrolled in Finance. To continue an older HLE career, retain or import its matching HLE state.
 
-```text
-6b5b4ec2db4f28304410646ea2cf2d062799de5044e4069d80e46ac24ea370dc
-```
+## Launcher tools and support
 
-for:
+The launcher provides settings, logs, reports, state imports, repair, and removal. Close the game before changing settings, importing state, or performing maintenance. For supported financial save editing, see **`Finance/SAVE-EDITING.md`** in the release.
 
-```text
-HoopLandExtended-0.2.0-alpha.4-rc.1-win-x64.zip
-```
+**Play without HLE** disables the mod for that launch. It does not reverse changes already saved to your career.
 
-## Reporting bugs
+To report an issue, use **Tools → Collect report** and open an issue on this repository. Include:
 
-Close the game first, then run `4-COLLECT-REPORT.cmd`. Review the generated report ZIP before sharing it because logs can include local machine paths or gameplay details.
+- Your HLE version and enabled modules.
+- Your front-office mode and the steps that led to the issue.
+- What you expected and what happened.
+- Whether it happens again after restarting, plus screenshots where useful.
+- The collected report ZIP.
 
-When reporting a problem, include what you were doing, whether it reproduces after a restart, and screenshots when useful.
+A diagnostic report is not a complete career-save backup.
 
-## Important
+## Alpha release
 
-- This is an experimental prerelease.
-- HLE currently targets one exact Windows/Steam Hoop Land build.
-- Do not bypass setup's compatibility check.
-- The normal launcher disables profiling overhead; use `2A-PLAY-HLE-PROFILING.cmd` only when collecting performance evidence.
-- Do not redistribute a post-setup HLE folder. It may contain copied Hoop Land files, downloaded dependencies, logs, and local state. Share only the original release ZIP.
+HLE is a public alpha. Back up your career before installing or updating, and check the release notes for compatibility information.
 
-## Disclaimer
-
-Hoop Land Extended is an unofficial fan-made project and is not affiliated with or endorsed by Koality Game.
-
-Hoop Land itself is **not** included in this repository or release package.
+Hoop Land is required and remains the property of its respective owners. Third-party dependency sources and licenses are included in **`DEPENDENCIES.txt`** in the release package.
