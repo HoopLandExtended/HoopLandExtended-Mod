@@ -1,0 +1,97 @@
+{
+  "Artifact": "HLE-0.5.0-alpha.1-Windows.zip",
+  "Repository": "HoopLandExtended/HoopLandExtended-Mod",
+  "Tag": "v0.5.0-alpha.1",
+  "Bytes": 7140587,
+  "Sha256": "43282fa10ba313a48762afd4d9534447f280d7dcd365625ea0a0fd85eea2a130",
+  "FilesAudited": 1390,
+  "Extensions": {
+    ".md": 77,
+    ".txt": 13,
+    ".pdf": 2,
+    ".exe": 1,
+    ".json": 175,
+    ".dll": 7,
+    ".patch": 8,
+    ".png": 88,
+    ".log": 132,
+    ".diff": 6,
+    ".py": 25,
+    ".cs": 755,
+    ".ps1": 36,
+    ".csproj": 41,
+    ".sha256": 2,
+    ".c": 2,
+    ".legacy": 2,
+    ".gz": 3,
+    ".jsonc": 2,
+    ".cmd": 10,
+    ".cfg": 2,
+    ".ini": 1
+  },
+  "PotentialSensitiveFindings": [],
+  "Binaries": [
+    [
+      "HLE/HLE.exe",
+      8901,
+      "7a5b57530037878a29ffc4408f79f5b5521210b1c0a3326dc708a25a33e37023"
+    ],
+    [
+      "HLE/HLE_Data/Developer/DevelopmentEvidence/Baseline.dll",
+      2194944,
+      "785752233e2f021bbeea9c0ee92e14a56cbc8ed3ea330b344a4066d4f6afac67"
+    ],
+    [
+      "HLE/HLE_Data/compatibility/alpha3-runtime.dll",
+      1930240,
+      "57be9aa91d922bd02c00c0d55ed7cfbaca0f63ab4f6f7bd7c2e9aa04928db2d6"
+    ],
+    [
+      "HLE/HLE_Data/payload/HoopLandExpanded.CareerHost.dll",
+      376320,
+      "f95603d78bef3c99cfbfd27d442a2664798ffc8a358c8292e93d4aa2c098d377"
+    ],
+    [
+      "HLE/HLE_Data/payload/HoopLandExpanded.DayProbe.dll",
+      1533952,
+      "06b16e8a69457364f609654f95caf28ca79ed0a7c220704df0ad0ced7d0f4077"
+    ],
+    [
+      "HLE/HLE_Data/payload/HoopLandExpanded.Finance.NativeImport.dll",
+      102400,
+      "582cfeb512875e70a1b1db45f8cffc8875b1dc83c81c524db7cf037bd6c5c97d"
+    ],
+    [
+      "HLE/HLE_Data/payload/HoopLandExpanded.Finance.dll",
+      111104,
+      "70be53842232a98b2ae97565391d249d521bab94033153fb21f8989f6f1ceb5e"
+    ],
+    [
+      "HLE/HLE_Data/payload/HoopLandExpanded.dll",
+      2970624,
+      "25d56d7b8374ba46ac287f073d909d3b2b30cd96590d5233ae412ac4290649f4"
+    ]
+  ],
+  "Contents": "HLE launcher, five HLE mod DLLs, compatibility baselines, scripts, complete HLE source, managed fixtures, design/architecture/verification documentation, curated financial profile packs, and seven guide pages. No installed game copy, native save, raw user report, current career state, credentials, or personal machine path is intended for publication.",
+  "CompressedEvidenceInspected": [
+    {
+      "Path": "HLE/HLE_Data/Developer/ReferenceSource/immutable-companions/historical-evidence/public-api-comparison.CareerHost.json.gz",
+      "Purpose": "Managed companion API/provenance comparison, not a career/save/report",
+      "UncompressedBytes": 14352948
+    },
+    {
+      "Path": "HLE/HLE_Data/Developer/ReferenceSource/immutable-companions/historical-evidence/public-api-comparison.Finance.NativeImport.json.gz",
+      "Purpose": "Managed companion API/provenance comparison, not a career/save/report",
+      "UncompressedBytes": 4025877
+    },
+    {
+      "Path": "HLE/HLE_Data/Developer/ReferenceSource/immutable-companions/historical-evidence/public-api-comparison.Finance.json.gz",
+      "Purpose": "Managed companion API/provenance comparison, not a career/save/report",
+      "UncompressedBytes": 3625851
+    }
+  ],
+  "DevelopmentLogsScope": "132 developer build/probe/fixture logs, not user runtime logs; scanned for personal paths and credential formats.",
+  "PublicDataScanPassed": true,
+  "TestedRuntimePreservation": "5 game DLLs and 444 production source files byte-identical to accepted baseline.",
+  "RepositoryBaseline": "1c1594359634c1283d1966918fe19c65ebf6c099"
+}

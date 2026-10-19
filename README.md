@@ -1,10 +1,10 @@
 # Hoop Land Extended (HLE)
 
-Hoop Land Extended expands Hoop Land career play with custom skills and legendary abilities, professional finances, front-office management, fan progression, and social features.
+Hoop Land Extended expands Hoop Land career play with player development, custom skills and legendary abilities, professional finances, front-office management, fan progression, and social features.
 
-**Current release: 0.4.0-alpha.1 · Windows x64 · Steam**
+**Current release: 0.5.0-alpha.1 · Windows x64 · Steam**
 
-Download `HLE-0.4.0-alpha.1.zip` from this repository's **Releases** page. Use **HLE.exe** to install, configure, update, and play.
+Download `HLE-0.5.0-alpha.1-Windows.zip` from this repository's **Releases** page. Use **HLE.exe** to install, configure, update, and play.
 
 ## Getting started
 
@@ -15,18 +15,30 @@ New to HLE? Download the **versioned release ZIP** from [GitHub Releases](https:
 | **Quick Start** — the shortest path to a working install | [Quick Start](docs/QUICK_START.md) | [One-page Quick Start](docs/HLE_Quick_Start.pdf) |
 | **Installation & Setup** — screenshots, updates, backups, and troubleshooting | [Installation Guide](docs/INSTALL.md) | [Full illustrated guide](docs/HLE_Installation_Guide.pdf) |
 
-The guides show the public `v0.4.0-alpha.1` setup as an example; always check the current release notes for supported game versions and changes. Keep the HLE package outside your original Steam game directory, and back up native saves and corresponding HLE state before updating.
+The guides cover the clean `HLE/` layout in `v0.5.0-alpha.1`. Read the [release notes](docs/releases/v0.5.0-alpha.1.md) for changes and the [verification report](docs/VERIFICATION.md) for evidence and remaining alpha limits. Keep the HLE package outside your original Steam game directory, and back up native saves and corresponding HLE state before updating.
 
 ## Features
 
 ### Choose your modules
 
-Enable **Skills and Legendary Abilities**, **Finance**, **Fans**, and **Social** independently from the launcher. All four are enabled by default.
+Enable **Skills and Legendary Abilities**, **Finance**, **Fans**, and **Social** independently from the launcher. CPU Training, Mentorship, Instant Practice, Persistent Form, and Draft Regression also have independent selections. Choose them in Settings; keep optional Form validation Off during normal play.
 
 - **Skills and Legendary Abilities:** Additional career progression and ability options. Disabling the module preserves your HLE progress and loadout and releases its SP costs until you enable it again.
 - **Finance:** Contracts, salary-cap accounting, team finances, front-office decisions, and facility maintenance.
 - **Fans:** Fan progression for your career.
 - **Social:** Social features surrounding your career and league activity.
+
+### Player Evolution
+
+| System | Behavior |
+| --- | --- |
+| CPU Training | Up to three team opportunities per eligible recovered day. Native XP tiers 5/7/10, five condition, two-day individual gap by default. Native levels/AP/upgrades remain authoritative; the human practice slot is reserved. |
+| Mentorship | Up to two assigned mentees per qualified veteran; one active per day. Relevant ordinary native/HLE skill credit and a training-quality tier, subject to prerequisites and caps. Legendary Abilities are excluded. |
+| Instant Practice | +5 XP, or +7 after a genuine +10 manual result in that category. Native costs and daily duplicate prevention remain. |
+| Persistent Form | Separate Shooting, Finishing, Creating, and Defense episodes using qualified personal evidence and modest scoped effects. Rookies build their own baseline; uncertain observations are withheld locally. |
+| Draft Regression | Freshman −4, sophomore −3, junior −2, senior/later −1 on twelve current nonphysical attributes. Physicals, potential, ceilings, and skill continuity are preserved. |
+
+Use **HLE DEVELOPMENT** in the practice facility or the launcher development tools after loading a career to manage training and mentors. Ordinary HLE skills now follow native season/game-length scaling with per-skill rarity weights. Legendary requirements are unchanged. Athleticism remains integrated.
 
 ### Professional finances
 
@@ -68,9 +80,9 @@ The launcher checks game compatibility before installation. First setup and the 
 ## Installation
 
 1. Close Hoop Land and any HLE launcher.
-2. Download and extract the entire release ZIP. It contains one **`HLE-0.4.0-alpha.1`** folder with all required files.
+2. Download and extract the entire release ZIP. It contains one **`HLE`** folder with all required files.
 3. Keep **HLE.exe** together with its accompanying files and open it.
-4. Select your original Steam Hoop Land folder, choose your modules, and start setup. HLE creates a separate modded game copy inside the release folder.
+4. Select your original Steam Hoop Land folder, choose your modules, and start setup. HLE creates a separate modded game copy under HLE_Data/Game.
 5. Select **Play HLE**.
 
 The default front-office mode is **Automatic**. Change it in the launcher settings before playing if you want **Player control** or **Recommendations**.
@@ -82,15 +94,15 @@ The default front-office mode is **Automatic**. Change it in the launcher settin
 3. Copy the **contents** of its release folder into your existing HLE package folder, replacing package files. Preserve the existing **`Game`** folder and **`installed.json`**. Do not place the new release folder inside the old one.
 4. Open **HLE.exe** in your existing folder and select **Update HLE**.
 
-Settings and HLE career state are retained when updating in place.
+Open HLE.exe after copying: it migrates the old Game, receipts, settings, and recognized package directories under HLE_Data automatically. Unknown/custom root files are preserved. Do not nest the new HLE folder inside the old one. Settings and HLE career state are retained when updating in place.
 
-If you set up a separate new package folder instead, close the game and use **Tools → Import previous HLE state**, selecting the old package's **`Game`** folder. Back up your native career save and matching HLE state before moving a career. Separate game copies share the game's normal save slots.
+If you set up a separate new package folder instead, close the game and use **Tools → Import previous HLE state**, selecting the old package's **`Game`** or **`HLE_Data/Game`** folder. Back up your native career save and matching HLE state before moving a career. Separate game copies share the game's normal save slots.
 
 Existing native careers without HLE financial state are not automatically enrolled in Finance. To continue an older HLE career, retain or import its matching HLE state.
 
 ## Launcher tools and support
 
-The launcher provides settings, logs, reports, state imports, repair, and removal. Close the game before changing settings, importing state, or performing maintenance. For supported financial save editing, see **`Finance/SAVE-EDITING.md`** in the release.
+The launcher provides settings, logs, reports, state imports, repair, and removal. Close the game before changing settings, importing state, or performing maintenance. For supported financial save editing, see **`HLE_Data/Finance/SAVE-EDITING.md`** in the release.
 
 **Play without HLE** disables the mod for that launch. It does not reverse changes already saved to your career.
 
@@ -102,10 +114,10 @@ To report an issue, use **Tools → Collect report** and open an issue on this r
 - Whether it happens again after restarting, plus screenshots where useful.
 - The collected report ZIP.
 
-A diagnostic report is not a complete career-save backup.
+Reports exclude native saves but include HLE sidecar state, local paths, and gameplay details. Review before attaching publicly. A diagnostic report is not a complete career-save backup.
 
 ## Alpha release
 
-HLE is a public alpha. Back up your career before installing or updating, and check the release notes for compatibility information.
+HLE is a public alpha using the Windows-tested dev.13 gameplay runtime. Long-term league development, ordinary-skill event-frequency calibration, and complete played/simulated Form parity remain under evaluation. Back up your career before installing or updating. Complete source, pinned companion provenance, build instructions, and fixture evidence ship under HLE_Data/Developer; see [build instructions](docs/BUILD.md). Source inclusion does not grant an open-source license.
 
-Hoop Land is required and remains the property of its respective owners. Third-party dependency sources and licenses are included in **`DEPENDENCIES.txt`** in the release package.
+Hoop Land is required and remains the property of its respective owners. Third-party dependency sources and licenses are included in **`Documentation/Legal/THIRD-PARTY-NOTICES.txt`** in the release package.

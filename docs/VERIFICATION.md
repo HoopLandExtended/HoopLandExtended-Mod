@@ -1,0 +1,32 @@
+# Verification — 0.5.0-alpha.1
+
+This is a launcher and packaging update over dev.13 setup-fix.1. All 444 production game-source files and all five shipped gameplay DLLs match that delivered baseline byte-for-byte. The native HLE.exe bootstrap is rebuilt for HLE_Data/scripts/Launcher.ps1. Existing gameplay behavior and balance remain unchanged.
+
+| Check | Evidence and result |
+|---|---|
+| Layout migration | 283 checks, 22 isolated fixtures: fresh package, legacy state/settings, custom files, Game/receipt/settings conflicts, report collisions, running-game refusal, invalid package/journal paths, exclusive lock, link rejection, interrupted moves/commits, rename/copy resume, and idempotence. |
+| Actual Finance asset regression | 13 targeted checks reproduce the original failure, run the real production Finance build/verification command with explicit assets, reject a missing manifest, and prove stale verifier caches are removed even when replacement source timestamps are older. Full corrected Finance verifier: 1,948 checks pass. Plugin compilation alone is substituted in this targeted harness. |
+| Actual setup preflight | 130 checks; includes a complete checkpoint larger than the former report cutoff, explicit missing-state failure, settings, state import, and native fixture preservation. |
+| Actual five-plugin copy | Five DLL fixtures copied through the production installer function. |
+| Nested setup/maintenance flows | 57 checks: production installer body, fresh/update/repair/remove/reinstall, module retention, integrated core + Finance report collection, all eight Form selections and Off, plus module opt-out. SDK discovery and the two compilation functions are substituted; all files are disposable fixtures. |
+| Launcher dialog behavior | 156 checks: production Help/Backups/Form/Tools functions and their event handlers with a recording UI port. Guide targets, real financial backup path, explicit Form arguments, cancel behavior, and nonoverlapping button bounds pass. |
+| Report collector | 18 filesystem regression checks pass; the intentional missing-state negative fixture prints REPORT INCOMPLETE as expected. |
+| Bootstrap | PE layout passes; 153 checks execute the shipped PE with simulated Win32 APIs, including relocation, Unicode/quoted paths, error handling and visible-GUI launch flags. |
+| Package/script integration | 20 static wiring gates pass. Product PowerShell and shipped project XML parse checks are also part of packaging. |
+| Companion provenance | 338 hash/provenance checks pass; no companion rebuild or native execution is claimed. |
+| Guides | Instructions.pdf (one page) and User-Guide.pdf (six pages) rendered and all seven pages visually reviewed. |
+| Final package | Hashes, root allowlist, five-DLL/444-source preservation, clean extraction and previous complete-release overlay checks are recorded in HLE_Data/Developer/DevelopmentEvidence/launcher-package-verification.json. |
+
+The package is extracted into a path containing spaces, parentheses, apostrophe, ampersand, dollar sign and Unicode. The available PowerShell suites are run from that clean extraction. An additional overlay uses the complete previous delivered ZIP plus disposable native-shaped game/settings data and a simulated local source workstream; every prior protected file must remain byte-identical in its destination or legacy archive. Unknown root files remain in place. No real installation or user save is used.
+
+The existing 82-step runtime verification report is retained with its source/payload fingerprints; those 82 steps were not rerun for this launcher-only change. Historical runtime/test artifacts remain under HLE_Data/Developer and should be read with their original timestamps. The ZIP has one enclosing HLE/ directory. The current launcher report distinguishes its new evidence from those retained results.
+
+The earlier Launcher.1 report established Windows PowerShell 5.1 startup and successful Core/DayProbe compilation plus 328 managed integration checks before its Finance asset-path failure. That failure was reproduced and fixed. The subsequent Launcher.2 report confirms successful installation, launch, career load, three day advances, thirteen completed game callbacks, 261 completed CPU training sessions, and a ready saved financial ledger without HLE errors. The last recovered professional day records 86 awards, 54 mentor quality boosts, 61 ordinary-skill credit awards across native and HLE skills, and five-condition costs on every award. All 2,456 persisted practice events are committed; none is uncertain. The exact saved checkpoint reconciles without replaying native values. Report state and the season archive are complete, with zero failed archive records or dropped evidence rows.
+
+These are observations from the user's Windows execution, not native execution by this Linux development host. The public package uses the same tested launcher, setup scripts, runtime source, and five gameplay DLLs. Public-promotion changes affect distribution metadata, guides, release notes, and sanitized evidence. Complete local fixture checks are repeated during public packaging. Historical reports retain their original scope and timestamps.
+
+Earlier Windows reports exercised simulated Hot/Cold Shooting, Hot Creating, and Hot Defense effects. The latest ordinary session had no active Form consumers, so it adds no effect-strength proof. Hot/Cold Finishing and the remaining played/sign combinations are not all individually executed. Shared signed adapters and managed fixtures provide supporting inference, not equivalent native evidence. Actual percentage parity, long-term balance, all supported modes, and every edited/imported timeline are not comprehensively established. Several-second inclusive native save/day timings cannot isolate HLE overhead; zero recorded allocation with detailed profiling disabled does not prove zero allocation.
+
+The latest logs have the loader's IL2CPP unstripping summaries and substitute Class::Init warning, followed by normal plugin initialization and a clean session. No HLE exception, failed financial action, native-player-log exception, uncertain practice receipt, or report omission was found. No release blocker is observed.
+
+Recommendation: suitable for broader public alpha testing. Windows-Acceptance.md gives a concise ordinary-play checklist. A repeated multi-hour Form matrix is not required for this release. Long-term balance and full effect calibration remain explicit alpha work.

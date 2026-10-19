@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.5.0-alpha.1 — 2026-10-19
+
+Integrated Player Evolution: CPU training, persistent mentorship, per-category Instant Practice mastery, statistical Form with scoped gameplay effects, and class-based draft regression. Ordinary HLE skill requirements now use native-relative scaling. Preserves Athleticism, skills/Legendary Abilities, financial-profile persistence, Finance, fans/social, front-office control, CPU trades, and draft-skill continuity.
+
+One enclosing HLE folder, five top-level items, updated guides, resumable legacy migration, corrected Windows setup/Finance assets, and complete multi-season diagnostic archives. Public promotion preserves all five tested gameplay DLLs and 444 production source files.
+
+Windows setup/launch, training, mentorship, practice, and save continuation are observed. Long-term balance and full Form parity remain alpha qualification work. See [release notes](docs/releases/v0.5.0-alpha.1.md) and [verification](docs/VERIFICATION.md).
+
+## v0.4.0-alpha.1 — 2026-10-09
+
+Added integrated Finance, independent module selection, HLE.exe setup/settings/tools, career front-office control modes, contract/trade proposals, facilities, and league activity. See the [historical release](https://github.com/HoopLandExtended/HoopLandExtended-Mod/releases/tag/v0.4.0-alpha.1).
+
 ## v0.2.0-alpha.4-rc.1 — 2026-10-04
 
 Standalone release candidate for the expanded HLE gameplay package.
